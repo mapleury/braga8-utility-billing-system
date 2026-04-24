@@ -8,10 +8,18 @@ use Illuminate\Database\Eloquent\Model;
 class MeterReading extends Model
 {
     use LogsActivity;
-    protected $fillable = [
-        'meter_id', 'user_id', 'reading_value', 'photo_path', 'recorded_at', 'description', 'status',
-    ];
-
+  protected $fillable = [
+    'meter_id', 
+    'user_id', 
+    'reading_value', 
+    'photo_path', 
+    'latitude',       // Tambahkan ini
+    'longitude',      // Tambahkan ini
+    'location_address', // Tambahkan ini
+    'recorded_at', 
+    'description', 
+    'status',
+];
     // Use $casts instead of $dates (Laravel 10+ style)
     protected $casts = [
         'recorded_at' => 'datetime',

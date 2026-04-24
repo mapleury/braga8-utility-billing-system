@@ -35,7 +35,18 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
   dio: ^5.9.1
-  flutter_secure_storage: ^8.0.0  # untuk simpan token dengan aman
+  flutter_secure_storage: ^10.0.0  # untuk simpan token dengan aman
+  http: ^1.6.0
+  intl: ^0.20.2
+  image_picker: ^1.2.1
+  camera: ^0.12.0+1
+  path_provider: ^2.1.5
+  fl_chart: ^1.2.0
+  pdf: ^3.12.0
+  printing: ^5.14.3
+  url_launcher: ^6.3.2
+  geolocator: ^14.0.2
+  geocoding: ^4.0.0
 
 dev_dependencies:
   flutter_test:

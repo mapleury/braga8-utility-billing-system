@@ -11,21 +11,17 @@ class AuditLog extends Model
 {
     protected $fillable = ['user_id', 'action', 'table_name', 'record_id', 'description'];
 
-    /**
-     * Simplified Polymorphic Relationship
-     */
-    public function relatedModel(): MorphTo
-    {
-        // We tell Laravel to use 'table_name' as the type and 'record_id' as the ID.
-        return $this->morphTo(null, 'table_name', 'record_id')->withDefault();
-    }
+  public function relatedModel(): MorphTo
+{
+    return $this->morphTo(null, 'table_name', 'record_id')->withDefault();
+}
 
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
     }
 
-   public function getItemLabelAttribute(): string
+ public function getItemLabelAttribute(): string
 {
     $model = $this->relatedModel;
 
@@ -39,6 +35,7 @@ class AuditLog extends Model
         'tenants'        => $model->tenant_name ?? "#{$this->record_id}",
         'users'          => $model->name ?? "#{$this->record_id}",
         'meter_readings' => "Reading: " . ($model->reading_value ?? 'N/A'),
+        'tariffs'        => $model->name ?? "Tariff #{$this->record_id}", // <--- Add this
         default          => "#" . $this->record_id,
     };
 }

@@ -1,204 +1,279 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-    <title>Braga8 Utility Billing</title>
-    @vite('resources/css/app.css')
-    
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+   <title>Braga8 Utility Billing</title>
+   @vite('resources/css/app.css')
+
+
+   <link rel="preconnect" href="https://fonts.googleapis.com">
+   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+
+   <style>
+       body {
+           font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+       }
+   </style>
 </head>
 
-<body class="bg-gray-100 text-gray-800">
+
+<body class="bg-gray-800 text-white antialiased">
+
 
 <div class="min-h-screen flex">
 
-    <!-- SIDEBAR -->
-    <aside class="w-64 bg-white border-r border-gray-200 flex flex-col">
 
-        <!-- Logo -->
-        <div class="h-20 flex items-center justify-center border-b border-gray-200">
-            <h1 class="text-xl font-semibold tracking-wide">
-                Braga<span class="text-blue-600">8</span>
-            </h1>
-        </div>
-
-        <!-- Navigation -->
-        <nav class="flex-1 p-4 space-y-8 text-sm overflow-y-auto">
-
-            <div class="space-y-1">
-
-                <a href="{{ route('dashboard') }}"
-                   @class([
-                       'block px-4 py-2 rounded-lg transition duration-150',
-                       'bg-blue-600 text-white shadow-sm' => request()->routeIs('dashboard'),
-                       'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('dashboard'),
-                   ])>
-                    Dashboard
-                </a>
-
-            </div>
-
-            <div class="space-y-1">
-                <p class="text-xs uppercase text-gray-400 mb-2 px-4 tracking-wider">
-                    Master Data
-                </p>
-
-                <a href="{{ route('tenants.index') }}"
-                   @class([
-                       'block px-4 py-2 rounded-lg transition duration-150',
-                       'bg-blue-600 text-white shadow-sm' => request()->routeIs('tenants.*'),
-                       'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('tenants.*'),
-                   ])>
-                    Tenants
-                </a>
-
-                <a href="{{ route('units.index') }}"
-                   @class([
-                       'block px-4 py-2 rounded-lg transition duration-150',
-                       'bg-blue-600 text-white shadow-sm' => request()->routeIs('units.*'),
-                       'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('units.*'),
-                   ])>
-                    Units
-                </a>
-
-                <a href="{{ route('utility-meters.index') }}"
-                   @class([
-                       'block px-4 py-2 rounded-lg transition duration-150',
-                       'bg-blue-600 text-white shadow-sm' => request()->routeIs('utility-meters.*'),
-                       'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('utility-meters.*'),
-                   ])>
-                    Utility Meters
-                </a>
-            </div>
-
-            <div class="space-y-1">
-                <p class="text-xs uppercase text-gray-400 mb-2 px-4 tracking-wider">
-                    Operations
-                </p>
-
-                <a href="{{ route('meter-readings.index') }}"
-                   @class([
-                       'block px-4 py-2 rounded-lg transition duration-150',
-                       'bg-blue-600 text-white shadow-sm' => request()->routeIs('meter-readings.*'),
-                       'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('meter-readings.*'),
-                   ])>
-                    Meter Readings
-                </a>
-
-                <a href="{{ route('tariffs.index') }}"
-                   @class([
-                       'block px-4 py-2 rounded-lg transition duration-150',
-                       'bg-blue-600 text-white shadow-sm' => request()->routeIs('tariffs.*'),
-                       'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('tariffs.*'),
-                   ])>
-                    Tariffs
-                </a>
-
-                <a href="{{ route('invoices.index') }}"
-                   @class([
-                       'block px-4 py-2 rounded-lg transition duration-150',
-                       'bg-blue-600 text-white shadow-sm' => request()->routeIs('invoices.*'),
-                       'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('invoices.*'),
-                   ])>
-                    Invoices
-                </a>
+  <!-- SIDEBAR -->
+<!-- SIDEBAR -->
+<aside
+   class="flex-none w-[240px] h-screen sticky top-0"
+   style="
+       background-image: url('{{ asset('sidebar-bg.png') }}');
+       background-size: cover;
+       background-repeat: no-repeat;
+       background-position: center;
+   ">
 
 
-                <a href="{{ route('reminders.index') }}"
-                   @class([
-                       'block px-4 py-2 rounded-lg transition duration-150',
-                       'bg-blue-600 text-white shadow-sm' => request()->routeIs('reminders.*'),
-                       'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('reminders.*'),
-                   ])>
-                    Reminders
-                </a>
-            </div>
+   <div class="flex flex-col h-full text-white px-5 py-6">
 
-            <div class="space-y-1">
-                <p class="text-xs uppercase text-gray-400 mb-2 px-4 tracking-wider">
-                    System
-                </p>
 
-            <a href="{{ route('users.index') }}"
-    @class([
-        'block px-4 py-2 rounded-lg transition duration-150',
-        'bg-blue-600 text-white shadow-sm' => request()->routeIs('users.*'),
-        'text-gray-600 hover:bg-blue-50 hover:text-blue-600' => !request()->routeIs('users.*'),
-    ])>
-    Users
-</a>
+       <!-- LOGO -->
+       <div class="flex justify-center mb-10">
+           <img src="{{ asset('logo.png') }}" alt="Logo" class="h-16 w-auto">
+       </div>
 
-<a href="{{ route('reports.index') }}" 
-   class="{{ request()->routeIs('reports.*') ? 'bg-indigo-600 text-white' : 'text-gray-300 hover:bg-gray-700' }} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-    <svg class="mr-3 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-    </svg>
-    Usage Reports
-</a>
 
-<a href="{{ route('payments.index') }}">
-    Payments
-</a>
+       <!-- NAV -->
+       <nav class="flex-1 overflow-y-auto space-y-6 pr-1 custom-scrollbar">
 
-<a href="{{ route('complaints.index') }}">
-    Complaints
-</a>
 
-<a href="{{ route('audit_logs.index') }}" 
-   class="{{ request()->routeIs('audit_logs.index') ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-white' }} group flex items-center px-2 py-2 text-sm font-medium rounded-md">
-    <svg class="mr-3 h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-    </svg>
-    Audit Logs
-</a>
-            </div>
+           <!-- Dashboard -->
+           <a href="{{ route('dashboard') }}"
+              @class([
+                  'block px-4 py-2.5 rounded-lg text-sm font-medium transition',
+                  'bg-white/20 text-white shadow-sm text-white' => request()->routeIs('dashboard'),
+                  'text-white/80 hover:bg-white/5 hover:text-white'
+              ])>
+               Dashboard
+           </a>
 
-        </nav>
 
-        <div class="p-4 border-t border-gray-200 text-xs text-gray-400 text-center">
-            © {{ date('Y') }} PT Eight Property Indonesia
-        </div>
+           <!-- SECTION -->
+           <div class="space-y-5">
 
-    </aside>
 
-    <!-- MAIN CONTENT -->
-    <div class="flex-1 flex flex-col">
+               <!-- Tenant & Unit -->
+               <div>
+                   <div class="flex items-center gap-2 text-white/80 text-sm font-semibold px-3 mb-2">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2 7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2v10a1 1 0 01-1 1h-3"/>
+                       </svg>
+                       Tenant & Unit
+                   </div>
 
-        <header class="h-20 bg-white border-b border-gray-200 flex items-center justify-between px-8">
-            <div>
-                <h2 class="text-lg font-semibold text-gray-800">
-                    @yield('page-title', 'Dashboard')
-                </h2>
-                <p class="text-xs text-gray-400 mt-1">
-                    Braga 8 Utility Billing Management
-                </p>
-            </div>
 
-<div class="flex items-center gap-4 text-sm text-gray-600">
+                   <div class="space-y-1">
+                       <a href="{{ route('tenants.index') }}"
+                          @class([
+                              'block px-4 py-2 rounded-lg text-sm transition',
+                              'bg-white/20 text-white shadow-sm text-white font-medium' => request()->routeIs('tenants.*'),
+                              'text-white/70 hover:bg-white/5 hover:text-white'
+                          ])>
+                           Tenant List
+                       </a>
 
-    <span>
-        {{ auth()->user()->name ?? 'Guest' }}
-    </span>
 
-    <form method="POST" action="{{ route('logout') }}">
-        @csrf
-        <button 
-            class="bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded text-xs">
-            Logout
-        </button>
-    </form>
+                       <a href="{{ route('units.index') }}"
+                          @class([
+                              'block px-4 py-2 rounded-lg text-sm transition',
+                              'bg-white/20 text-white shadow-sm text-white font-medium' => request()->routeIs('units.*'),
+                              'text-white/70 hover:bg-white/5 hover:text-white'
+                          ])>
+                           Unit List
+                       </a>
+                   </div>
+               </div>
+
+
+               <!-- Utilities -->
+               <div>
+                   <div class="flex items-center gap-2 text-white/80 text-sm font-semibold px-3 mb-2">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M12 6v6l4 2"/>
+                       </svg>
+                       Utilities
+                   </div>
+
+
+                   <div class="space-y-1">
+                       <a href="{{ route('utility-meters.index') }}"
+                          @class([
+                              'block px-4 py-2 rounded-lg text-sm transition',
+                              'bg-white/20 text-white shadow-sm text-white font-medium' => request()->routeIs('utility-meters.*'),
+                              'text-white/70 hover:bg-white/5 hover:text-white'
+                          ])>
+                           Meter Data
+                       </a>
+
+
+                       <a href="{{ route('meter-readings.index') }}"
+                          @class([
+                              'block px-4 py-2 rounded-lg text-sm transition',
+                              'bg-white/20 text-white shadow-sm text-white font-medium' => request()->routeIs('meter-readings.*'),
+                              'text-white/70 hover:bg-white/5 hover:text-white'
+                          ])>
+                           Meter Readings
+                       </a>
+                   </div>
+               </div>
+
+
+               <!-- Billing -->
+               <div>
+                   <div class="flex items-center gap-2 text-white/80 text-sm font-semibold px-3 mb-2">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M20 7l-8-4-8 4 8 4 8-4z"/>
+                       </svg>
+                       Tarif & Billing
+                   </div>
+
+
+                   <div class="space-y-1">
+                       <a href="{{ route('tariffs.index') }}" class="block px-4 py-2 rounded-lg text-sm text-white/70 hover:bg-white/5 hover:text-white transition">Tarif Setup</a>
+                       <a href="{{ route('invoices.index') }}" class="block px-4 py-2 rounded-lg text-sm text-white/70 hover:bg-white/5 hover:text-white transition">Generate Tagihan</a>
+                       <a href="{{ route('invoices.index') }}" class="block px-4 py-2 rounded-lg text-sm text-white/70 hover:bg-white/5 hover:text-white transition">Invoice</a>
+                   </div>
+               </div>
+
+
+               <!-- Payment -->
+               <div>
+                   <div class="flex items-center gap-2 text-white/80 text-sm font-semibold px-3 mb-2">
+                       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
+                           <path stroke-linecap="round" stroke-linejoin="round" d="M17 9V7H5v10h14V9z"/>
+                       </svg>
+                       Payment
+                   </div>
+
+
+                   <div class="space-y-1">
+                       <a href="{{ route('payments.index') }}" class="block px-4 py-2 rounded-lg text-sm text-white/70 hover:bg-white/5 hover:text-white transition">Payment Status</a>
+                       <a href="{{ route('payments.index') }}" class="block px-4 py-2 rounded-lg text-sm text-white/70 hover:bg-white/5 hover:text-white transition">Payment Logs</a>
+                   </div>
+               </div>
+
+
+           </div>
+
+
+           <!-- Bottom -->
+           <div class="pt-6 border-t border-white/10 space-y-1">
+
+
+               <a href="{{ route('users.index') }}"
+                  class="block px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:bg-white/5 hover:text-white transition">
+                   User Management
+               </a>
+
+
+               <a href="{{ route('audit_logs.index') }}"
+                  class="block px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:bg-white/5 hover:text-white transition">
+                   Audit Log
+               </a>
+
+
+               <a href="#"
+                  class="block px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:bg-white/5 hover:text-white transition">
+                   Settings
+               </a>
+
+               <a href="{{ route('reminders.index') }}"
+                  class="block px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:bg-white/5 hover:text-white transition">
+                   Reminders
+               </a>
+
+                <a href="{{ route('reports.index') }}"
+                  class="block px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:bg-white/5 hover:text-white transition">
+                   Usage Reports
+               </a>
+               
+                <a href="{{ route('notifications.index') }}"
+                  class="block px-4 py-2 rounded-lg text-sm font-medium text-white/80 hover:bg-white/5 hover:text-white transition">
+                   Notifications
+               </a>
+
+
+           </div>
+
+
+       </nav>
+   </div>
+</aside>
+   <!-- MAIN -->
+<div
+   class="flex-1 flex flex-col bg-gray-900"
+   style="
+       background-image: url('{{ asset('content-bg.svg') }}');
+       background-size: cover;
+       background-position: center;
+       background-repeat: no-repeat;
+   "
+>
+
+
+       <!-- HEADER -->
+       <header class="h-20 border-b border-gray-100 flex items-center justify-between px-8">
+
+
+           <div>
+               <h2 class="text-lg font-semibold text-gray-800">
+                   @yield('page-title', 'Dashboard')
+               </h2>
+               <p class="text-sm text-gray-500 mt-1">
+                   Braga 8 Utility Billing Management
+               </p>
+           </div>
+
+
+           <div class="flex items-center gap-4 text-sm text-gray-700">
+
+
+               <span class="font-medium">
+                   {{ auth()->user()->name ?? 'Guest' }}
+               </span>
+
+
+               <form method="POST" action="{{ route('logout') }}">
+                   @csrf
+                   <button class="bg-gray-100 hover:bg-gray-200 px-4 py-2 rounded-md text-sm font-medium transition">
+                       Logout
+                   </button>
+               </form>
+
+
+           </div>
+
+
+       </header>
+
+
+       <!-- CONTENT -->
+       <main class="flex-1 p-8">
+           @yield('content')
+       </main>
+
+
+   </div>
+
 
 </div>
-        </header>
 
-        <main class="flex-1 p-8">
-            @yield('content')
-        </main>
-
-    </div>
-
-</div>
 
 </body>
 </html>
+

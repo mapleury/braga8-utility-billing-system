@@ -91,3 +91,16 @@ Route::post('/payments/{payment}/remind', [PaymentController::class, 'remind'])-
 Route::resource('complaints', ComplaintController::class);
 Route::get('complaints/{complaint}/action', [App\Http\Controllers\ComplaintController::class, 'action'])->name('complaints.action');
 Route::resource('complaints', App\Http\Controllers\ComplaintController::class);
+
+use App\Http\Controllers\NotificationController;
+
+Route::middleware(['auth'])->group(function () {
+    Route::get('/notifications', [NotificationController::class, 'index'])
+        ->name('notifications.index');
+
+    Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead'])
+        ->name('notifications.read');
+
+    Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])
+        ->name('notifications.destroy');
+});

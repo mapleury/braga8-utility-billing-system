@@ -7,6 +7,9 @@ use App\Models\Invoice;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
+use App\Models\Notification;
+use App\Models\User;
+
 
 class PaymentController extends Controller
 {
@@ -89,6 +92,23 @@ class PaymentController extends Controller
         if ($payment->status === 'verified') {
             $payment->invoice->update(['status' => 'paid']);
         }
+
+if ($payment->status === 'verified') {
+    $payment->invoice->update(['status' => 'paid']);
+
+    $tenantName = $payment->invoice->tenant->tenant_name;
+
+    $admins = User::where('role', 'admin')->get();
+
+    foreach ($admins as $admin) {
+        Notification::create([
+            'user_id' => $admin->id,
+            'title' => 'Payment Received',
+            'message' => "{$tenantName} paid their invoice",
+            'type' => 'payment'
+        ]);
+    }
+}
 
         return redirect()->route('payments.index')->with('success', 'Payment record updated.');
     }

@@ -4,19 +4,31 @@
 <div class="container mx-auto px-4 py-6">
     <h1 class="text-3xl font-bold mb-6">Add Meter Reading</h1>
 
-    <form action="{{ route('meter-readings.store') }}" method="POST" enctype="multipart/form-data">
+    @if($errors->any())
+        <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+            <ul>
+                @foreach ($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
+    <form id="meterForm" action="{{ route('meter-readings.store') }}" method="POST" enctype="multipart/form-data">
         @csrf
+
+        <input type="hidden" name="latitude" id="lat">
+        <input type="hidden" name="longitude" id="lng">
 
         <div class="mb-4">
             <label class="block mb-1 font-semibold">Meter</label>
             <select name="meter_id" class="border p-2 w-full">
                 @foreach($meters as $meter)
-                    <option value="{{ $meter->id }}">
+                    <option value="{{ $meter->id }}" {{ old('meter_id') == $meter->id ? 'selected' : '' }}>
                         {{ $meter->unit->unit_number ?? '-' }} - {{ ucfirst($meter->meter_type) }} - {{ $meter->meter_number }}
                     </option>
                 @endforeach
             </select>
-            @error('meter_id') <p class="text-red-500">{{ $message }}</p> @enderror
         </div>
 
         <div class="mb-4">
@@ -27,8 +39,8 @@
                 name="reading_value" 
                 class="border p-2 w-full" 
                 value="{{ old('reading_value') }}"
+                required
             >
-            @error('reading_value') <p class="text-red-500">{{ $message }}</p> @enderror
         </div>
 
         <div class="mb-4">
@@ -37,9 +49,8 @@
                 name="description" 
                 rows="3"
                 class="border p-2 w-full"
-                placeholder="Optional notes... (e.g., meter slightly foggy, estimated reading, etc.)"
+                placeholder="Optional notes..."
             >{{ old('description') }}</textarea>
-            @error('description') <p class="text-red-500">{{ $message }}</p> @enderror
         </div>
 
         <div class="mb-4">
@@ -49,16 +60,70 @@
                 name="photo" 
                 accept="image/*" 
                 class="border p-2 w-full"
+                required
             >
-            @error('photo') <p class="text-red-500">{{ $message }}</p> @enderror
         </div>
 
         <button 
             type="submit" 
-            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            id="submitBtn"
+            class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:bg-gray-400"
         >
-            Save Reading
+            <span id="btnText">Save Reading</span>
         </button>
     </form>
 </div>
+<script>
+    const form = document.getElementById('meterForm');
+    const btn = document.getElementById('submitBtn');
+    const btnText = document.getElementById('btnText');
+
+    form.addEventListener('submit', function(e) {
+        e.preventDefault(); 
+        
+        btn.disabled = true;
+        btnText.innerText = "Connecting to Satellite...";
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                function(position) {
+                    // Pastikan ID ini SAMA dengan ID di input hidden
+                    document.getElementById('lat').value = position.coords.latitude;
+                    document.getElementById('lng').value = position.coords.longitude; 
+                    
+                    console.log("Location Captured: ", position.coords.latitude, position.coords.longitude);
+                    
+                    btnText.innerText = "Uploading Data...";
+                    form.submit(); // SEKARANG BARU SUBMIT
+                },
+                function(error) {
+                    // Tampilkan error lebih spesifik biar kita tau kenapa
+                    let msg = "";
+                    switch(error.code) {
+                        case error.PERMISSION_DENIED:
+                            msg = "User denied the request for Geolocation.";
+                            break;
+                        case error.POSITION_UNAVAILABLE:
+                            msg = "Location information is unavailable.";
+                            break;
+                        case error.TIMEOUT:
+                            msg = "The request to get user location timed out.";
+                            break;
+                    }
+                    alert("Gagal ambil lokasi: " + msg);
+                    btn.disabled = false;
+                    btnText.innerText = "Save Reading";
+                },
+                { 
+                    enableHighAccuracy: true, // Biar lebih akurat
+                    timeout: 10000,           // Kasih waktu 10 detik
+                    maximumAge: 0             // Jangan pake cache lokasi lama
+                }
+            );
+        } else {
+            alert("Browser tidak mendukung Geolocation.");
+            form.submit();
+        }
+    });
+</script>
 @endsection

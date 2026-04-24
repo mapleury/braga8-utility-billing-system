@@ -11,16 +11,35 @@ use Illuminate\Support\Str;
 
 class TenantController extends Controller
 {
-    public function index(Request $request)
-    {
-        $query = Tenant::query();
+   public function index(Request $request)
+{
+    $query = Tenant::query();
 
-        if ($request->filled('search')) {
-            $query->where('tenant_name', 'LIKE', "%{$request->search}%");
-        }
+    // 1. Fitur Search untuk Admin Web
+    if ($request->filled('search')) {
+        $query->where('tenant_name', 'LIKE', "%{$request->search}%");
+    }
 
-        $tenants = $query->latest()->paginate(10);
-        return view('tenants.index', compact('tenants'));
+    // 2. Eager Loading (PENTING: Ambil minimal 2 readings untuk perbandingan foto)
+    $query->with(['units.meters.readings' => function($q) {
+        $q->latest(); // Default ambil semua, nanti Flutter yang mapping index 0 dan 1
+    }]);
+
+    // 3. Logika Pemisah: API vs Web
+    if ($request->expectsJson()) {
+        // Untuk Flutter: Kasih semua data (atau paginate lebih besar)
+        // karena Flutter biasanya handle search & filter di sisi client
+        return response()->json($query->latest()->get());
+    }
+
+    // Untuk Admin Web: Tetap 10 per halaman supaya ringan
+$tenants = $query->with(['units.meters.readings' => function($q) {
+    // Pastikan tidak ada ->first() atau ->limit(1) di sini!
+    $q->orderBy('recorded_at', 'desc'); 
+}])->latest()->get();
+
+    return view('tenants.index', compact('tenants'));
+
     }
 
     public function create()
@@ -112,4 +131,5 @@ class TenantController extends Controller
             return redirect()->route('tenants.index')->with('success', 'Tenant deleted.');
         });
     }
+    
 }

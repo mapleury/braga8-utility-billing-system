@@ -9,11 +9,11 @@ class Kernel extends HttpKernel
 {
  protected $middlewareGroups = [
     'web' => [
-        \Illuminate\Cookie\Middleware\EncryptCookies::class, // Use Illuminate version
+        \Illuminate\Cookie\Middleware\EncryptCookies::class,
         \Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse::class,
         \Illuminate\Session\Middleware\StartSession::class,
         \Illuminate\View\Middleware\ShareErrorsFromSession::class,
-        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class, // Use Foundation version
+        \Illuminate\Foundation\Http\Middleware\VerifyCsrfToken::class, 
         \Illuminate\Routing\Middleware\SubstituteBindings::class,
     ],
 
@@ -29,5 +29,11 @@ protected $routeMiddleware = [
     'auth' => \App\Http\Middleware\Authenticate::class,
     'checkrole' => \App\Http\Middleware\CheckRole::class,
 ];
+
+    protected function schedule(Schedule $schedule): void
+    {
+      $schedule->command('reminders:send')->daily();
+    }
+
 
 }

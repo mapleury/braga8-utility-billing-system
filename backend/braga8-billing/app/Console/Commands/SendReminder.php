@@ -21,7 +21,6 @@ class SendReminders extends Command
 
         foreach ($reminders as $reminder) {
 
-            // SIMULATION: replace with notification/email later
             Log::info("Reminder sent: " . $reminder->title);
 
             $reminder->update([

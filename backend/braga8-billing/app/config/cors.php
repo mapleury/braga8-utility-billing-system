@@ -1,21 +1,21 @@
 <?php
 
 return [
+'paths' => ['api/*', 'storage/*', 'sanctum/csrf-cookie'],
+'allowed_methods' => ['*'],
 
-    'paths' => ['api/*', 'sanctum/csrf-cookie', 'login', 'logout'],
+'allowed_origins' => ['*'],
 
-    'allowed_methods' => ['*'],
+'allowed_origins_patterns' => [],
 
-    'allowed_origins' => ['*'],
+'allowed_headers' => ['*'],
+'exposed_headers' => ['Content-Type', 'Content-Length'],
 
-    'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['*'],
+'max_age' => 0,
 
-    'exposed_headers' => [],
 
-    'max_age' => 0,
 
-    'supports_credentials' => false,
+'supports_credentials' => true,
 
 ];

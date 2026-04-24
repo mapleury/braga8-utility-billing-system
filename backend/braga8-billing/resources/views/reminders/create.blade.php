@@ -34,6 +34,13 @@
                     </select>
                 </div>
 
+                <div class="mb-4 flex items-center">
+    <input type="checkbox" name="auto_escalate" id="auto_escalate" value="1" class="rounded border-gray-300 text-blue-600 shadow-sm">
+    <label for="auto_escalate" class="ml-2 text-sm text-gray-600">
+        Otomatis buat 3 tahap eskalasi (Teguran 1, 2, & Terakhir) Hanya untuk Tenant
+    </label>
+</div>
+
                 <div class="flex items-center justify-end border-t pt-4">
                     <a href="{{ route('reminders.index') }}" class="text-gray-600 mr-4">Cancel</a>
                     <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-md font-bold hover:bg-blue-700 shadow">

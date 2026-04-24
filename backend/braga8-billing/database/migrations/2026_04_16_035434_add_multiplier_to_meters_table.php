@@ -1,0 +1,26 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+public function up(): void
+{
+    Schema::table('utility_meters', function (Blueprint $table) {
+        // Change 'meters' to 'utility_meters'
+        $table->decimal('multiplier', 8, 2)->default(1.00)->after('power_capacity');
+    });
+}
+
+public function down(): void
+{
+    Schema::table('utility_meters', function (Blueprint $table) {
+        $table->dropColumn('multiplier');
+    });
+}
+};

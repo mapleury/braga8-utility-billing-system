@@ -28,8 +28,9 @@ public function meterReadings() {
 
 
 // Unit.php
-public function tenant() {
-    return $this->belongsTo(Tenant::class);
+public function tenant()
+{
+    return $this->hasOne(Tenant::class, 'user_id');
 }
 
 public function meters() {

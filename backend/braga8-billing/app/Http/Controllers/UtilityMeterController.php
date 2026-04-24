@@ -45,8 +45,7 @@ class UtilityMeterController extends Controller
         'meter_type' => 'required|in:electricity,water',
         'meter_number' => 'required|string|max:100',
         'power_capacity' => 'nullable|string|max:100',
-        'tariff_id' => 'nullable|exists:tariffs,id', 
-        'meter_category' => 'required|in:postpaid,prepaid',
+        'tariff_id' => 'nullable|exists:tariffs,id'
     ]);
 
     UtilityMeter::create($validated);
@@ -69,6 +68,7 @@ class UtilityMeterController extends Controller
             'meter_type' => 'required|in:electricity,water',
             'meter_number' => 'required|string|max:100',
             'power_capacity' => 'nullable|string|max:100',
+            'multiplier'     => 'required|numeric',
            'tariff_id' => 'nullable|exists:tariffs,id',
             'meter_category' => 'required|in:postpaid,prepaid',
         ]);
