@@ -1,6 +1,6 @@
 import 'dart:typed_data';
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 
 class ImageContainerProofComponent extends StatelessWidget {
   final String? currentImageUrl;
@@ -12,24 +12,29 @@ class ImageContainerProofComponent extends StatelessWidget {
     this.previousImageUrl,
   });
 
-  // Helper to fetch images safely as bytes to avoid CanvasKit crashes
+  // ── Use Dio so ngrok-skip-browser-warning header is included ──────────────
+  static final Dio _dio = Dio(BaseOptions(
+    connectTimeout: const Duration(seconds: 15),
+    receiveTimeout: const Duration(seconds: 15),
+    headers: {
+      'ngrok-skip-browser-warning': 'true',
+      'Accept': 'image/*',
+    },
+  ));
+
   Future<Uint8List?> _getImageBytes(String? url) async {
     if (url == null || url.isEmpty) return null;
-    
     try {
-      final response = await http.get(
-        Uri.parse(url),
-        headers: {
-          'Accept': 'application/json', // Avoids Laravel redirecting to /login
-        },
+      final response = await _dio.get<List<int>>(
+        url,
+        options: Options(responseType: ResponseType.bytes),
       );
-      
-      if (response.statusCode == 200) {
-        return response.bodyBytes;
+      if (response.statusCode == 200 && response.data != null) {
+        return Uint8List.fromList(response.data!);
       }
       debugPrint("Image Fetch Failed: Status ${response.statusCode} for $url");
     } catch (e) {
-      debugPrint("Error fetching bytes: $e");
+      debugPrint("Error fetching image bytes: $e");
     }
     return null;
   }
@@ -55,8 +60,8 @@ class ImageContainerProofComponent extends StatelessWidget {
           Text(
             label,
             style: const TextStyle(
-              fontSize: 12, 
-              color: Colors.grey, 
+              fontSize: 12,
+              color: Colors.grey,
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -74,18 +79,21 @@ class ImageContainerProofComponent extends StatelessWidget {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(Icons.image_not_supported, color: Colors.grey, size: 30),
+                        Icon(Icons.image_not_supported,
+                            color: Colors.grey, size: 30),
                         SizedBox(height: 4),
-                        Text("No Data", style: TextStyle(fontSize: 10, color: Colors.grey)),
+                        Text("No Data",
+                            style:
+                                TextStyle(fontSize: 10, color: Colors.grey)),
                       ],
                     ),
                   )
                 : FutureBuilder<Uint8List?>(
-                    // Using the URL as a key ensures the future restarts when the URL changes
-                    key: ValueKey(imageUrl), 
+                    key: ValueKey(imageUrl),
                     future: _getImageBytes(imageUrl),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                      if (snapshot.connectionState ==
+                          ConnectionState.waiting) {
                         return const Center(
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
@@ -93,7 +101,7 @@ class ImageContainerProofComponent extends StatelessWidget {
                           ),
                         );
                       }
-                      
+
                       if (snapshot.hasData && snapshot.data != null) {
                         return Image.memory(
                           snapshot.data!,
@@ -103,14 +111,17 @@ class ImageContainerProofComponent extends StatelessWidget {
                         );
                       }
 
-                      // Fallback for broken links or server 404s
                       return const Center(
                         child: Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.broken_image, color: Colors.redAccent, size: 30),
+                            Icon(Icons.broken_image,
+                                color: Colors.redAccent, size: 30),
                             SizedBox(height: 4),
-                            Text("Load Error", style: TextStyle(fontSize: 10, color: Colors.redAccent)),
+                            Text("Load Error",
+                                style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.redAccent)),
                           ],
                         ),
                       );

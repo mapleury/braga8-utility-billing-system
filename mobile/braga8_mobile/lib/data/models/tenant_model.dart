@@ -9,11 +9,34 @@ class Tenant {
   Tenant({required this.id, required this.name, required this.units});
 
   factory Tenant.fromJson(Map<String, dynamic> json) => Tenant(
-    id: json['id'],
-    name: json['tenant_name'] ?? json['name'] ?? 'Unknown Shop',
-    units: (json['units'] as List? ?? []).map((u) => Unit.fromJson(u)).toList(),
-  );
+        id: json['id'],
+        name: json['tenant_name'] ?? json['name'] ?? 'Unknown Shop',
+        units: (json['units'] as List? ?? [])
+            .map((u) => Unit.fromJson(u))
+            .toList(),
+      );
 }
+
+// ── Meter model ───────────────────────────────────────────────────────────────
+class Meter {
+  final int id;
+  final String? meterNumber;
+  final String? meterType; // 'electricity' or 'water'
+
+  Meter({
+    required this.id,
+    this.meterNumber,
+    this.meterType,
+  });
+
+  factory Meter.fromJson(Map<String, dynamic> json) => Meter(
+        id: json['id'],
+        meterNumber: json['meter_number'],
+        meterType: json['meter_type'],
+      );
+}
+
+// ── Unit model ────────────────────────────────────────────────────────────────
 class Unit {
   final int id;
   final String unitNumber;
@@ -23,32 +46,39 @@ class Unit {
   final String? electricMeterNumber;
   final String? waterMeterNumber;
 
-  // --- GENERAL FALLBACK (Jika butuh satu alamat utama unit) ---
+  // ── Parsed meter objects (NEW) ─────────────────────────────────────────────
+  final List<Meter> meters;
+
+  // ── Reading IDs (for edit) ─────────────────────────────────────────────────
+  final int? elecReadingId;
+  final int? waterReadingId;
+
+  // ── General fallback ───────────────────────────────────────────────────────
   final String? locationAddress;
 
-  // --- CURRENT DATA (Index 0) ---
+  // ── Current data ───────────────────────────────────────────────────────────
   final String? elecReadingValue;
   final String? elecPhotoPath;
   final String? elecRecordedAt;
   final String? elecDescription;
-  final String? elecLocationAddress; // NEW: Categorized
-  
+  final String? elecLocationAddress;
+
   final String? waterReadingValue;
   final String? waterPhotoPath;
   final String? waterRecordedAt;
   final String? waterDescription;
-  final String? waterLocationAddress; // NEW: Categorized
+  final String? waterLocationAddress;
 
-  // --- PREVIOUS DATA (Index 1) ---
+  // ── Previous data ──────────────────────────────────────────────────────────
   final String? prevElecReadingValue;
   final String? prevElecPhotoPath;
   final String? prevElecRecordedAt;
-  final String? prevElecLocationAddress; // NEW: Categorized
-  
+  final String? prevElecLocationAddress;
+
   final String? prevWaterReadingValue;
   final String? prevWaterPhotoPath;
   final String? prevWaterRecordedAt;
-  final String? prevWaterLocationAddress; // NEW: Categorized
+  final String? prevWaterLocationAddress;
 
   Unit({
     required this.id,
@@ -56,6 +86,9 @@ class Unit {
     required this.floor,
     required this.isElecChecked,
     required this.isWaterChecked,
+    required this.meters,
+    this.elecReadingId,
+    this.waterReadingId,
     this.locationAddress,
     this.electricMeterNumber,
     this.waterMeterNumber,
@@ -82,9 +115,13 @@ class Unit {
   });
 
   factory Unit.fromJson(Map<String, dynamic> json) {
-    final List meters = json['meters'] as List? ?? [];
+    final List rawMeters = json['meters'] as List? ?? [];
 
-    // Helper untuk ambil reading berdasarkan index
+    // ── Parse all meters into Meter objects ───────────────────────────────────
+    final List<Meter> parsedMeters =
+        rawMeters.map((m) => Meter.fromJson(m as Map<String, dynamic>)).toList();
+
+    // ── Helper: get reading at index from a raw meter map ─────────────────────
     Map<String, dynamic>? getReadingAt(Map<String, dynamic>? meter, int index) {
       if (meter == null) return null;
       final List readings = meter['readings'] as List? ?? [];
@@ -92,15 +129,17 @@ class Unit {
       return null;
     }
 
-    // 1. Identifikasi Meter
-    final Map<String, dynamic>? elecMeter = meters.firstWhere(
-      (m) => m['meter_type'] == 'electricity', orElse: () => null,
+    // ── Identify electric / water meter maps ──────────────────────────────────
+    final Map<String, dynamic>? elecMeter = rawMeters.firstWhere(
+      (m) => m['meter_type'] == 'electricity',
+      orElse: () => null,
     );
-    final Map<String, dynamic>? waterMeter = meters.firstWhere(
-      (m) => m['meter_type'] == 'water', orElse: () => null,
+    final Map<String, dynamic>? waterMeter = rawMeters.firstWhere(
+      (m) => m['meter_type'] == 'water',
+      orElse: () => null,
     );
 
-    // 2. Ambil Reading (Index 0 = Current, Index 1 = Previous)
+    // ── Readings (index 0 = current, index 1 = previous) ─────────────────────
     final latestElec = getReadingAt(elecMeter, 0);
     final prevElec = getReadingAt(elecMeter, 1);
     final latestWater = getReadingAt(waterMeter, 0);
@@ -112,35 +151,43 @@ class Unit {
       floor: json['floor'] ?? '-',
       isElecChecked: latestElec != null,
       isWaterChecked: latestWater != null,
+
+      // ── Meter objects list ─────────────────────────────────────────────────
+      meters: parsedMeters,
+
+      // ── Reading IDs ────────────────────────────────────────────────────────
+      elecReadingId: latestElec != null ? latestElec['id'] : null,
+      waterReadingId: latestWater != null ? latestWater['id'] : null,
+
       electricMeterNumber: elecMeter?['meter_number'],
       waterMeterNumber: waterMeter?['meter_number'],
 
-      // Fallback Alamat Utama (Ambil dari mana saja yang tersedia pertama kali)
-      locationAddress: latestElec?['location_address'] ?? latestWater?['location_address'],
+      locationAddress:
+          latestElec?['location_address'] ?? latestWater?['location_address'],
 
-      // --- CURRENT MAPPINGS ---
+      // ── Current ────────────────────────────────────────────────────────────
       elecReadingValue: latestElec?['reading_value']?.toString(),
       elecPhotoPath: latestElec?['photo_path'],
       elecRecordedAt: latestElec?['recorded_at'],
       elecDescription: latestElec?['description'],
-      elecLocationAddress: latestElec?['location_address'], // Mapped!
+      elecLocationAddress: latestElec?['location_address'],
 
       waterReadingValue: latestWater?['reading_value']?.toString(),
       waterPhotoPath: latestWater?['photo_path'],
       waterRecordedAt: latestWater?['recorded_at'],
       waterDescription: latestWater?['description'],
-      waterLocationAddress: latestWater?['location_address'], // Mapped!
+      waterLocationAddress: latestWater?['location_address'],
 
-      // --- PREVIOUS MAPPINGS ---
+      // ── Previous ───────────────────────────────────────────────────────────
       prevElecReadingValue: prevElec?['reading_value']?.toString(),
       prevElecPhotoPath: prevElec?['photo_path'],
       prevElecRecordedAt: prevElec?['recorded_at'],
-      prevElecLocationAddress: prevElec?['location_address'], // Mapped!
+      prevElecLocationAddress: prevElec?['location_address'],
 
       prevWaterReadingValue: prevWater?['reading_value']?.toString(),
       prevWaterPhotoPath: prevWater?['photo_path'],
       prevWaterRecordedAt: prevWater?['recorded_at'],
-      prevWaterLocationAddress: prevWater?['location_address'], // Mapped!
+      prevWaterLocationAddress: prevWater?['location_address'],
     );
   }
 }

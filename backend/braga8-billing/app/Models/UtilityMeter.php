@@ -7,7 +7,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class UtilityMeter extends Model
 {
+    
     use LogsActivity;
+    protected $table = 'utility_meters'; // Tambahkan ini untuk memastikan nama tabelnya benar
 
     protected $fillable = [
         'unit_id', 

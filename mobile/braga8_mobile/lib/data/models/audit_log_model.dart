@@ -2,14 +2,21 @@ class AuditLogResponse {
   final List<AuditLog> data;
   final int currentPage;
   final int lastPage;
+  final int perPage;
 
-  AuditLogResponse({required this.data, required this.currentPage, required this.lastPage});
+  AuditLogResponse({
+    required this.data,
+    required this.currentPage,
+    required this.lastPage,
+    required this.perPage,
+  });
 
   factory AuditLogResponse.fromJson(Map<String, dynamic> json) {
     return AuditLogResponse(
       data: (json['data'] as List).map((i) => AuditLog.fromJson(i)).toList(),
       currentPage: json['current_page'] ?? 1,
       lastPage: json['last_page'] ?? 1,
+      perPage: json['per_page'] ?? 10, 
     );
   }
 }
@@ -18,7 +25,7 @@ class AuditLog {
   final int id;
   final String userName;
   final String action;
-  final String description; // Ini kuncinya!
+  final String description; // Kunci untuk 'nama data'
   final String createdAt;
 
   AuditLog({

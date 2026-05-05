@@ -1,40 +1,39 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:braga8_mobile/data/models/audit_log_model.dart';
+import 'package:braga8_mobile/data/models/meter_reading_model.dart';
 import 'package:braga8_mobile/data/models/tenant_model.dart';
 import 'package:braga8_mobile/data/models/notification_model.dart';
+import 'package:camera/camera.dart';
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:http/http.dart' as _dio;
 
 int unreadNotificationsCount = 0;
 
 class ApiService {
-  // --- SINGLETON ARCHITECTURE ---
-  // This ensures there is only ONE instance of ApiService in the whole app.
   static final ApiService _instance = ApiService._internal();
   factory ApiService({String? token}) {
     if (token != null) _instance.token = token;
     return _instance;
   }
   ApiService._internal();
-  // ------------------------------
 
   String? token;
   Map<String, dynamic>? currentUser;
 
-  static const String _baseUrl = 'http://localhost:8000/api';
+  static const String _baseUrl = 'https://bunkbed-deem-spew.ngrok-free.dev/api';
 
   final Dio dio =
       Dio(
           BaseOptions(
             baseUrl: _baseUrl,
-            connectTimeout: const Duration(
-              seconds: 15,
-            ), // Increased to prevent timeouts
+            connectTimeout: const Duration(seconds: 15),
             receiveTimeout: const Duration(seconds: 15),
             headers: {
               'Accept': 'application/json',
               'Content-Type': 'application/json',
+              'ngrok-skip-browser-warning': 'true',
             },
           ),
         )
@@ -42,8 +41,6 @@ class ApiService {
           LogInterceptor(responseBody: true, requestBody: true, error: true),
         );
 
-  /// Private helper for Auth Headers
-  /// Logic: Uses provided string, or falls back to the saved class token.
   Options _authOptions([String? providedToken]) {
     final effectiveToken = (providedToken ?? token ?? "").trim();
     return Options(headers: {'Authorization': 'Bearer $effectiveToken'});
@@ -57,10 +54,10 @@ class ApiService {
         '/login',
         data: {'email': email, 'password': password},
       );
-      if (response.data != null && response.data['user'] != null) {
+      // Inside login method:
+      if (response.data != null && response.data['token'] != null) {
+        this.token = response.data['token'];
         currentUser = response.data['user'];
-        // SESSION PERSISTENCE: This token is now available for all other calls
-        token = response.data['token'];
       }
       return response.data;
     } on DioException catch (e) {
@@ -79,7 +76,7 @@ class ApiService {
     }
   }
 
-  // --- TENANT & PROFILE LOGIC ---
+  // --- TENANT & PROFILE ---
 
   Future<List<dynamic>> getTenants(String providedToken) async {
     try {
@@ -159,7 +156,7 @@ class ApiService {
     }
   }
 
-  // --- METER LOGIC ---
+  // --- METER STATS ---
 
   Future<Map<String, dynamic>> getMonthlyStats(String providedToken) async {
     try {
@@ -174,40 +171,36 @@ class ApiService {
     }
   }
 
-  // --- DAFTAR UNIT LOGIC (AUTOMATED) ---
+  // --- UNITS ---
 
   Future<List<Tenant>> fetchUnitsSummary() async {
     try {
-      // No more passing tokens manually. It uses the Singleton token.
       final response = await dio.get('/units/summary', options: _authOptions());
+      print("RAW DATA FROM SERVER: ${response.data}"); // <--- LIHAT DI CONSOLE
       final List data = response.data;
       return data.map((t) => Tenant.fromJson(t)).toList();
-    } on DioException catch (e) {
-      print('STATUS: ${e.response?.statusCode}');
-      print('DATA: ${e.response?.data}');
-      throw Exception('Failed to load units: ${e.message}');
     } catch (e) {
-      print('PARSING ERROR: $e');
-      throw Exception('Data mapping failed');
+      throw Exception('Failed to load units');
     }
   }
+
+  // --- LOCATION ---
 
   Future<Position> determinePosition() async {
-    bool serviceEnabled;
-    LocationPermission permission;
-
-    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
     if (!serviceEnabled) return Future.error('Location services are disabled.');
 
-    permission = await Geolocator.checkPermission();
+    LocationPermission permission = await Geolocator.checkPermission();
     if (permission == LocationPermission.denied) {
       permission = await Geolocator.requestPermission();
-      if (permission == LocationPermission.denied)
+      if (permission == LocationPermission.denied) {
         return Future.error('Location permissions are denied');
+      }
     }
-
     return await Geolocator.getCurrentPosition();
   }
+
+  // --- AUDIT LOGS ---
 
   Future<AuditLogResponse> fetchLogs(int page) async {
     try {
@@ -216,30 +209,25 @@ class ApiService {
         queryParameters: {'page': page},
         options: _authOptions(),
       );
-
-      if (response.statusCode == 200) {
-        // Dio otomatis parse JSON ke Map, jadi tidak perlu json.decode lagi
+      if (response.statusCode == 200)
         return AuditLogResponse.fromJson(response.data);
-      } else {
-        throw Exception('Failed to load audit logs');
-      }
+      throw Exception('Failed to load audit logs');
     } on DioException catch (e) {
       print('Fetch Logs Error: ${e.response?.data}');
       throw Exception('Network error while fetching logs');
     }
   }
 
-  // --- METER READING LOGIC ---
+  // --- METER READINGS ---
 
   Future<bool> updateReading({
     required int readingId,
     required String newValue,
     String? description,
-    // Jika lo mau update foto juga, kirim file-nya di sini pakai Multipart
   }) async {
     try {
       final response = await dio.put(
-        '/readings/$readingId', // Sesuaikan endpoint API Laravel lo
+        '/readings/$readingId',
         data: {'reading_value': newValue, 'description': description},
         options: _authOptions(),
       );
@@ -250,33 +238,55 @@ class ApiService {
     }
   }
 
+  /// Kirim data meter reading ke Laravel.
+  ///
+  /// STRATEGI: selalu pakai JSON + Base64 untuk foto.
+  /// Tidak ada lagi kIsWeb branch — Base64 works di web DAN mobile.
+  /// Laravel decode Base64 via injectBase64Photo() di controller.
   Future<bool> submitMeterReading(
     Map<String, dynamic> data,
-    File? image,
-  ) async {
+    XFile? image, {
+    bool isEdit = false,
+    int? readingId,
+    required int unitId,
+    required int meterId, // Gunakan parameter ini
+  }) async {
     try {
-      FormData formData = FormData.fromMap(data);
+      final String path = isEdit ? '/readings/$readingId' : '/readings';
+      final Map<String, dynamic> payload = Map.from(data);
+
+      // KUNCI PERBAIKAN:
+      payload['meter_id'] = meterId; // ID dari tabel utility_meters
+      payload['unit_id'] = unitId; // ID dari tabel units
+
+      if (isEdit) payload['_method'] = 'PUT';
 
       if (image != null) {
-        formData.files.add(
-          MapEntry(
-            'photo', // Sesuaikan key file di Laravel
-            await MultipartFile.fromFile(
-              image.path,
-              filename: 'meter_reading.jpg',
-            ),
-          ),
-        );
+        final bytes = await image.readAsBytes();
+        final ext = image.name.split('.').last.toLowerCase();
+        final mime = (ext == 'png') ? 'image/png' : 'image/jpeg';
+        payload['photo_base64'] = 'data:$mime;base64,${base64Encode(bytes)}';
       }
 
       final response = await dio.post(
-        '/readings', // Sesuaikan endpoint lo
-        data: formData,
+        path,
+        data: payload,
         options: _authOptions(),
       );
       return response.statusCode == 200 || response.statusCode == 201;
-    } catch (e) {
+    } on DioException catch (e) {
+      debugPrint('DETAIL ERROR: ${e.response?.data}');
       return false;
     }
   }
+
+  Future<List<MeterReadingHistory>> fetchReadingHistory(int unitId) async {
+    final response = await _dio.get('/units/$unitId/readings' as Uri);
+    final List data = response.data as List;
+    return data.map((e) => MeterReadingHistory.fromJson(e)).toList();
+  }
+}
+
+extension on _dio.Response {
+  get data => null;
 }

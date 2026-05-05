@@ -1,4 +1,5 @@
 import 'package:braga8_mobile/data/models/tenant_model.dart';
+import 'package:braga8_mobile/views/core/app_colors.dart';
 import 'package:braga8_mobile/views/detail_unit_screen.dart';
 import 'package:flutter/material.dart';
 
@@ -14,6 +15,9 @@ class UnitMeterTableComponent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool needsInput = !unit.isElecChecked || !unit.isWaterChecked;
+    final String buttonText = needsInput ? "Input" : "View";
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 0.5,
@@ -64,53 +68,80 @@ class UnitMeterTableComponent extends StatelessWidget {
 
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             child: DataTable(
-              columnSpacing: 28,
+              columnSpacing: 24, // lebih lega
               headingRowHeight: 45,
-              dataRowHeight: 60,
-              headingRowColor: MaterialStateProperty.all(Colors.grey.shade50),
+              dataRowHeight: 70,
+              headingRowColor: WidgetStateProperty.all(Colors.grey.shade50),
               columns: const [
-                DataColumn(label: Text('Unit')),
-                DataColumn(label: Text('Floor')),
-                DataColumn(label: Text('Electricity')),
-                DataColumn(label: Text('Water')),
-                DataColumn(label: Text('Actions')),
+                DataColumn(label: SizedBox(width: 70, child: Text('Unit'))),
+                DataColumn(label: SizedBox(width: 70, child: Text('Floor'))),
+                DataColumn(
+                  label: SizedBox(width: 110, child: Text('Electricity')),
+                ),
+                DataColumn(label: SizedBox(width: 110, child: Text('Water'))),
+                DataColumn(label: SizedBox(width: 110, child: Text('Actions'))),
               ],
               rows: [
                 DataRow(
                   cells: [
                     DataCell(
-                      Text(
-                        unit.unitNumber,
-                        style: const TextStyle(fontWeight: FontWeight.w500),
+                      SizedBox(
+                        width: 70,
+                        child: Text(
+                          unit.unitNumber,
+                          style: const TextStyle(fontWeight: FontWeight.w500),
+                        ),
                       ),
                     ),
-                    DataCell(Text(unit.floor)),
-                    DataCell(_buildStatusBadge(unit.isElecChecked)),
-                    DataCell(_buildStatusBadge(unit.isWaterChecked)),
+                    DataCell(SizedBox(width: 70, child: Text(unit.floor))),
                     DataCell(
-                      ElevatedButton(
-                        onPressed: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => DetailUnitScreen(
-                                shopName:
-                                    tenantName, // This is the Shop/Tenant name from your API loop
-                                unit: unit, // The specific unit object
+                      SizedBox(
+                        width: 110,
+                        child: _buildStatusBadge(unit.isElecChecked),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 110,
+                        child: _buildStatusBadge(unit.isWaterChecked),
+                      ),
+                    ),
+                    DataCell(
+                      SizedBox(
+                        width: 110,
+                        height: 70, // tombol lebih tinggi
+                        child: ElevatedButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => DetailUnitScreen(
+                                  shopName: tenantName,
+                                  unit: unit,
+                                ),
                               ),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: needsInput
+                                ? AppColors.primaryOrange.withOpacity(0.3)
+                                : const Color(0xFF723CFF),
+                            minimumSize: const Size(130, 70),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
                             ),
-                          );
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF723CFF),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(8),
                           ),
-                        ),
-                        child: const Text(
-                          "View",
-                          style: TextStyle(color: Colors.white),
+                          child: Text(
+                            buttonText,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                         ),
                       ),
                     ),

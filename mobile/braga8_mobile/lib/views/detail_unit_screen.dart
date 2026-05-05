@@ -1,6 +1,7 @@
-import 'dart:typed_data';
-import 'package:braga8_mobile/views/input_reading_screen.dart';
+import 'package:braga8_mobile/views/meter_reading_screen.dart';
 import 'package:flutter/material.dart';
+import 'package:braga8_mobile/ApiService.dart';
+import 'package:braga8_mobile/views/input_reading_screen.dart';
 import 'package:braga8_mobile/data/models/tenant_model.dart';
 import 'package:braga8_mobile/components/header_unit_detail_card_component.dart';
 import 'package:braga8_mobile/components/image_container_proof_component.dart';
@@ -22,47 +23,89 @@ class DetailUnitScreen extends StatefulWidget {
 
 class _DetailUnitScreenState extends State<DetailUnitScreen> {
   String selectedCategory = "Electric";
+  late Unit currentUnit;
+  bool _isLoading = false;
+  final ApiService _apiService = ApiService();
+
+  @override
+  void initState() {
+    super.initState();
+    // Inisialisasi state awal pakai data dari halaman sebelumnya
+    currentUnit = widget.unit;
+  }
+
+  // --- LOGIC REFRESH DATA ---
+  Future<void> _refreshData() async {
+    setState(() => _isLoading = true);
+    try {
+      // Panggil API untuk ambil data terbaru
+      final tenants = await _apiService.fetchUnitsSummary();
+
+      // Cari unit yang sesuai dengan ID saat ini
+      for (var tenant in tenants) {
+        try {
+          final updatedUnit = tenant.units.firstWhere(
+            (u) => u.id == currentUnit.id,
+          );
+          setState(() {
+            currentUnit = updatedUnit;
+          });
+          break; // Stop looping kalau unit sudah ketemu
+        } catch (e) {
+          continue;
+        }
+      }
+    } catch (e) {
+      debugPrint("Gagal me-refresh data: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Gagal memperbarui data dari server")),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Gunakan IP lokal yang sesuai dengan koneksi backend lo
-    const String apiImageUrl = "http://127.0.0.1:8000/api/meter-photo/";
+    const String apiImageUrl =
+        "https://bunkbed-deem-spew.ngrok-free.dev/api/meter-photo/";
     final bool isElectric = selectedCategory == "Electric";
 
-    // --- 1. LOGIC DATA CURRENT (Dinamis sesuai Category) ---
+    // --- 1. LOGIC DATA CURRENT (Pakai currentUnit) ---
     final String? readingValue = isElectric
-        ? widget.unit.elecReadingValue
-        : widget.unit.waterReadingValue;
+        ? currentUnit.elecReadingValue
+        : currentUnit.waterReadingValue;
 
     final String? recordedDate = isElectric
-        ? widget.unit.elecRecordedAt
-        : widget.unit.waterRecordedAt;
+        ? currentUnit.elecRecordedAt
+        : currentUnit.waterRecordedAt;
 
-    // Ambil lokasi spesifik meteran atau fallback ke alamat unit
     final String? currentLocation = isElectric
-        ? (widget.unit.elecLocationAddress ?? widget.unit.locationAddress)
-        : (widget.unit.waterLocationAddress ?? widget.unit.locationAddress);
+        ? (currentUnit.elecLocationAddress ?? currentUnit.locationAddress)
+        : (currentUnit.waterLocationAddress ?? currentUnit.locationAddress);
 
     final String? rawPath = isElectric
-        ? widget.unit.elecPhotoPath
-        : widget.unit.waterPhotoPath;
+        ? currentUnit.elecPhotoPath
+        : currentUnit.waterPhotoPath;
 
     final String? currentPhotoUrl = (rawPath != null && rawPath.isNotEmpty)
         ? "$apiImageUrl${rawPath.split('/').last}"
         : null;
 
-    // --- 2. LOGIC DATA PREVIOUS (Dinamis sesuai Category) ---
+    // --- 2. LOGIC DATA PREVIOUS (Pakai currentUnit) ---
     final String? prevReadingValue = isElectric
-        ? widget.unit.prevElecReadingValue
-        : widget.unit.prevWaterReadingValue;
+        ? currentUnit.prevElecReadingValue
+        : currentUnit.prevWaterReadingValue;
 
     final String? prevRecordedDate = isElectric
-        ? widget.unit.prevElecRecordedAt
-        : widget.unit.prevWaterRecordedAt;
+        ? currentUnit.prevElecRecordedAt
+        : currentUnit.prevWaterRecordedAt;
 
     final String? prevRawPath = isElectric
-        ? widget.unit.prevElecPhotoPath
-        : widget.unit.prevWaterPhotoPath;
+        ? currentUnit.prevElecPhotoPath
+        : currentUnit.prevWaterPhotoPath;
 
     final String? prevPhotoUrl = (prevRawPath != null && prevRawPath.isNotEmpty)
         ? "$apiImageUrl${prevRawPath.split('/').last}"
@@ -84,76 +127,88 @@ class _DetailUnitScreenState extends State<DetailUnitScreen> {
           icon: const Icon(Icons.arrow_back, color: Colors.black),
           onPressed: () => Navigator.pop(context),
         ),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh, color: Colors.black),
+            onPressed: _refreshData,
+            tooltip: "Refresh Data",
+          ),
+        ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Card dengan Toggle Category
-            HeaderUnitDetailCardComponent(
-              unitNumber: widget.unit.unitNumber,
-              tenantName: widget.shopName,
-              electricMeter: widget.unit.electricMeterNumber ?? "No Meter",
-              waterMeter: widget.unit.waterMeterNumber ?? "No Meter",
-              category: selectedCategory,
-              onCategoryToggle: () {
-                setState(() {
-                  selectedCategory = isElectric ? "Water" : "Electric";
-                });
-              },
+      body: _isLoading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF723CFF)),
+            )
+          : SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Header Card
+                  HeaderUnitDetailCardComponent(
+                    unitNumber: currentUnit.unitNumber,
+                    tenantName: widget.shopName,
+                    electricMeter:
+                        currentUnit.electricMeterNumber ?? "No Meter",
+                    waterMeter: currentUnit.waterMeterNumber ?? "No Meter",
+                    category: selectedCategory,
+                    onCategoryToggle: () {
+                      setState(() {
+                        selectedCategory = isElectric ? "Water" : "Electric";
+                      });
+                    },
+                  ),
+
+                  const SizedBox(height: 30),
+
+                  if (!hasData) ...[
+                    _buildEmptyState(),
+                  ] else ...[
+                    _buildReadingDisplay(isElectric, readingValue),
+
+                    const SizedBox(height: 30),
+                    const Text(
+                      "Photo Proof",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    ImageContainerProofComponent(
+                      currentImageUrl: currentPhotoUrl,
+                      previousImageUrl: prevPhotoUrl,
+                    ),
+
+                    const SizedBox(height: 30),
+                    const Text(
+                      "Entry Metadata",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+
+                    ImageDetailCardComponent(
+                      inputDate: recordedDate,
+                      category: selectedCategory,
+                      location: currentLocation,
+                    ),
+                  ],
+
+                  const SizedBox(height: 40),
+
+                  _buildActionButton(hasData),
+                  const SizedBox(height: 12),
+                  const SizedBox(height: 12),
+                  _buildHistoryButton(),
+                  _buildBackButton(),
+                  const SizedBox(height: 20),
+                ],
+              ),
             ),
-
-            const SizedBox(height: 30),
-
-            if (!hasData) ...[
-              _buildEmptyState(),
-            ] else ...[
-              // Display Angka Meteran Saat Ini
-              _buildReadingDisplay(isElectric, readingValue),
-
-              const SizedBox(height: 30),
-              const Text(
-                "Photo Proof",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 15),
-
-              // Container Foto (Kiri: Current, Kanan: Previous)
-              ImageContainerProofComponent(
-                currentImageUrl: currentPhotoUrl,
-                previousImageUrl: prevPhotoUrl,
-              ),
-
-              const SizedBox(height: 30),
-              const Text(
-                "Entry Metadata",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 15),
-
-              // Metadata yang sekarang FULL DINAMIS (Tanggal & Lokasi)
-              // Di dalam build() DetailUnitScreen lo:
-              ImageDetailCardComponent(
-                inputDate:
-                    recordedDate, // Pakai recordedDate yang sudah dipilih lewat isElectric logic
-                category: selectedCategory, // "Electric" atau "Water"
-                location: isElectric
-                    ? widget.unit.elecLocationAddress
-                    : widget.unit.waterLocationAddress,
-              ),
-            ],
-
-            const SizedBox(height: 40),
-
-            // Tombol Aksi
-            _buildActionButton(hasData),
-            const SizedBox(height: 12),
-            _buildBackButton(),
-            const SizedBox(height: 20),
-          ],
-        ),
-      ),
     );
   }
 
@@ -219,28 +274,26 @@ class _DetailUnitScreenState extends State<DetailUnitScreen> {
       width: double.infinity,
       child: ElevatedButton(
         onPressed: () async {
-          // Tentukan nilai awal jika sedang mode Edit
           final String? initialValue = selectedCategory == "Electric"
-              ? widget.unit.elecReadingValue
-              : widget.unit.waterReadingValue;
+              ? currentUnit.elecReadingValue
+              : currentUnit.waterReadingValue;
 
-          // Navigasi ke InputReadingScreen yang baru kita buat
+          // Navigasi ke form input dan tunggu hasilnya
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) => InputReadingScreen(
-                unit: widget.unit,
-                category: selectedCategory, // "Electric" atau "Water"
-                isEdit: hasData, // True jika sudah ada data meteran
-                initialValue: initialValue, // Isi form otomatis jika Edit
+                unit: currentUnit, // Lempar currentUnit terbaru
+                category: selectedCategory,
+                isEdit: hasData,
+                initialValue: initialValue,
               ),
             ),
           );
 
-          // Jika result true (berhasil simpan), lo bisa trigger refresh data di sini
+          // Jika form mengembalikan true (sukses simpan), panggil refresh!
           if (result == true) {
-            // Contoh: panggil fungsi fetch ulang atau setState
-            debugPrint("Data berhasil disimpan, saatnya refresh UI!");
+            _refreshData();
           }
         },
         style: ElevatedButton.styleFrom(
@@ -280,6 +333,40 @@ class _DetailUnitScreenState extends State<DetailUnitScreen> {
           style: TextStyle(
             color: Color(0xFF723CFF),
             fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildHistoryButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: OutlinedButton.icon(
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => MeterHistoryScreen(
+                unitId: currentUnit.id,
+                unitNumber: currentUnit.unitNumber,
+              ),
+            ),
+          );
+        },
+        icon: const Icon(Icons.history, color: Color(0xFF723CFF)),
+        label: const Text(
+          "Lihat Riwayat Bacaan",
+          style: TextStyle(
+            color: Color(0xFF723CFF),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        style: OutlinedButton.styleFrom(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          side: const BorderSide(color: Color(0xFF723CFF)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
           ),
         ),
       ),
