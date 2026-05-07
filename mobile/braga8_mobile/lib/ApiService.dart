@@ -275,18 +275,26 @@ class ApiService {
       );
       return response.statusCode == 200 || response.statusCode == 201;
     } on DioException catch (e) {
-      debugPrint('DETAIL ERROR: ${e.response?.data}');
+      debugPrint('DETAIL ERROR: ${jsonEncode(e.response?.data)}');
+      final serverMessage = e.response?.data?['message'];
+      if (serverMessage != null) throw Exception(serverMessage);
       return false;
     }
   }
 
   Future<List<MeterReadingHistory>> fetchReadingHistory(int unitId) async {
-    final response = await _dio.get('/units/$unitId/readings' as Uri);
-    final List data = response.data as List;
-    return data.map((e) => MeterReadingHistory.fromJson(e)).toList();
+    try {
+      final response = await dio.get(
+        '/units/$unitId/readings',
+        options: _authOptions(),
+      );
+      final List data = response.data as List;
+      return data.map((e) => MeterReadingHistory.fromJson(e)).toList();
+    } on DioException catch (e) {
+      debugPrint('Fetch History Error: ${e.response?.data}');
+      throw Exception('Failed to load reading history');
+    }
   }
-}
 
-extension on _dio.Response {
-  get data => null;
+  Future<Object?> getBillingSummary(String token) async {}
 }

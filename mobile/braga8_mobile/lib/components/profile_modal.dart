@@ -12,7 +12,6 @@ void showProfileModal(
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    // Background transparan agar efek blur BackdropFilter terlihat
     backgroundColor: const Color.fromARGB(0, 60, 60, 60),
     builder: (context) =>
         ProfileControllerSheet(api: api, role: role, token: token),
@@ -38,6 +37,7 @@ class ProfileControllerSheet extends StatefulWidget {
 class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
   bool isEditing = false;
   bool isSaving = false;
+  bool showLogoutConfirm = false;
 
   late TextEditingController nameController;
   late TextEditingController phoneController;
@@ -101,17 +101,30 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
         setState(() => isEditing = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Profile Updated!"),
+            content: Text("Profil berhasil diperbarui!"),
             backgroundColor: Colors.green,
           ),
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text("Update Failed. Check API validation."),
+            content: Text("Gagal memperbarui. Periksa koneksi atau data Anda."),
             backgroundColor: Colors.red,
           ),
         );
+      }
+    }
+  }
+
+  void _handleLogout() async {
+    if (!showLogoutConfirm) {
+      // First tap: Show confirmation UI
+      setState(() => showLogoutConfirm = true);
+    } else {
+      // Second tap (on the "Yes" button): Execute logout
+      await widget.api.logout(widget.token);
+      if (mounted) {
+        Navigator.of(context).popUntil((route) => route.isFirst);
       }
     }
   }
@@ -122,10 +135,16 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
     final tenant = user?['tenant_details'];
     final bool isPetugas = widget.role == 'petugas';
 
+    final String displayName = isPetugas
+        ? (user?['name'] ?? '-')
+        : (tenant?['tenant_name'] ?? '-');
+    final String displayUsername =
+        "@${(user?['username'] ?? user?['name'] ?? '-').toString().replaceFirst('@', '')}";
+
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10), // Efek Glassmorphism
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
         child: Container(
           padding: EdgeInsets.only(
             left: 24,
@@ -134,11 +153,10 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
             bottom: MediaQuery.of(context).viewInsets.bottom + 32,
           ),
           decoration: BoxDecoration(
-            // Black soft transparent background
-            color: Colors.black.withValues(alpha: 0.7),
+            color: Colors.black.withValues(alpha: 0.75),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15), // Apple soft border
+              color: Colors.white.withValues(alpha: 0.15),
               width: 1.5,
             ),
           ),
@@ -146,7 +164,7 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Drag Handle
+              // Drag handle
               Center(
                 child: Container(
                   width: 40,
@@ -159,12 +177,12 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
                 ),
               ),
 
-              // Header Row
+              // Header row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    isEditing ? "Edit Profile" : "Account Profile",
+                    isEditing ? "Edit Profil" : "Profil Akun",
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -195,62 +213,146 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
                   ),
                 ],
               ),
+
               const SizedBox(height: 24),
 
-              if (!isEditing) ...[
-                // --- VIEW MODE ---
-                if (isPetugas) ...[
-                  _buildInfoRow("Name", user?['name']),
-                  _buildInfoRow("Username", user?['username'] ?? user?['name']),
-                  _buildInfoRow("Email", user?['email']),
-                  _buildInfoRow("Phone", user?['phone_number']),
-                ] else ...[
-                  _buildInfoRow("Tenant Name", tenant?['tenant_name']),
-                  _buildInfoRow("PIC", tenant?['person_in_charge']),
-                  _buildInfoRow("Phone", tenant?['contact_phone']),
-                  _buildInfoRow("Company", tenant?['company_name']),
-                ],
-                const SizedBox(height: 32),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white.withValues(alpha: 0.05),
-                      foregroundColor: Colors.white,
-                      side: BorderSide(
-                        color: Colors.white.withValues(alpha: 0.15),
-                        width: 0.9,
+              // Avatar + name row (from AccountModalTenant style)
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(3),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0xFF7D1C0A), Color(0xFFFA6C2A)],
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      elevation: 0,
                     ),
-                    child: const Text(
-                      "Tutup",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                    child: const CircleAvatar(
+                      radius: 23,
+                      backgroundColor: Color(0xFFD2B4A6),
+                      child: Icon(
+                        Icons.person,
+                        color: Color(0xFF7A4A32),
+                        size: 36,
                       ),
                     ),
                   ),
-                ),
+                  const SizedBox(width: 15),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        displayName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      Text(
+                        displayUsername,
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 24),
+              Divider(color: Colors.white.withValues(alpha: 0.1)),
+              const SizedBox(height: 12),
+
+              if (!isEditing) ...[
+                // View mode
+                if (isPetugas) ...[
+                  _buildInfoRow("Nama", user?['name']),
+                  _buildInfoRow("Username", user?['username'] ?? user?['name']),
+                  _buildInfoRow("Email", user?['email']),
+                  _buildInfoRow("Telepon", user?['phone_number']),
+                ] else ...[
+                  _buildInfoRow("Nama Tenant", tenant?['tenant_name']),
+                  _buildInfoRow("PIC", tenant?['person_in_charge']),
+                  _buildInfoRow("Telepon", tenant?['contact_phone']),
+                  _buildInfoRow("Perusahaan", tenant?['company_name']),
+                ],
+
+                const SizedBox(height: 28),
+
+                // --- Combined Logout / Confirmation Logic ---
+                if (showLogoutConfirm) ...[
+                  Text(
+                    "Apakah Anda yakin ingin keluar?",
+                    style: TextStyle(color: Colors.white70, fontSize: 13),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildOutlineButton(
+                          label: "Ya, Keluar",
+                          icon: Icons.check,
+                          color: const Color(0xFFE57373),
+                          onTap:
+                              _handleLogout, // This now triggers the actual logout
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildOutlineButton(
+                          label: "Batal",
+                          icon: Icons.close,
+                          color: Colors.white54,
+                          onTap: () =>
+                              setState(() => showLogoutConfirm = false),
+                        ),
+                      ),
+                    ],
+                  ),
+                ] else ...[
+                  // Original Buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildOutlineButton(
+                          label: "Keluar",
+                          icon: Icons.logout,
+                          color: const Color(0xFFE57373),
+                          onTap:
+                              _handleLogout, // This now toggles the confirm state
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildOutlineButton(
+                          label: "Tutup",
+                          icon: Icons.close,
+                          color: Colors.white54,
+                          onTap: () => Navigator.pop(context),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ] else ...[
-                // --- EDIT MODE ---
+                // Edit mode
                 _buildTextField(
-                  isPetugas ? "Full Name" : "Tenant Name",
+                  isPetugas ? "Nama Lengkap" : "Nama Tenant",
                   nameController,
                 ),
                 _buildTextField(
-                  isPetugas ? "Phone Number" : "Contact Phone",
+                  isPetugas ? "Nomor Telepon" : "Telepon Kontak",
                   phoneController,
                 ),
                 if (!isPetugas)
-                  _buildTextField("Person In Charge", picController),
+                  _buildTextField("Penanggung Jawab", picController),
 
-                const SizedBox(height: 32),
+                const SizedBox(height: 28),
+
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
@@ -262,7 +364,7 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
                         color: Colors.white.withValues(alpha: 0.2),
                         width: 0.9,
                       ),
-                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      padding: const EdgeInsets.symmetric(vertical: 22),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(16),
                       ),
@@ -294,8 +396,6 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
     );
   }
 
-  // --- WIDGET HELPERS ---
-
   Widget _buildInfoRow(String label, dynamic value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
@@ -304,11 +404,7 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
         children: [
           Text(
             label,
-            style: const TextStyle(
-              color: Colors.white60,
-              fontWeight: FontWeight.w500,
-              fontSize: 14,
-            ),
+            style: const TextStyle(color: Colors.white60, fontSize: 14),
           ),
           Text(
             value?.toString() ?? '-',
@@ -325,7 +421,7 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
 
   Widget _buildTextField(String label, TextEditingController controller) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: TextField(
         controller: controller,
         style: const TextStyle(color: Colors.white, fontSize: 15),
@@ -333,7 +429,7 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
           labelText: label,
           labelStyle: const TextStyle(color: Colors.white54),
           filled: true,
-          fillColor: Colors.white.withValues(alpha: 0.05), // Input bg
+          fillColor: Colors.white.withValues(alpha: 0.05),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 16,
             vertical: 16,
@@ -344,8 +440,42 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
-            borderSide: BorderSide(color: Colors.white54, width: 1.5),
+            borderSide: const BorderSide(color: Colors.white54, width: 1.5),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOutlineButton({
+    required String label,
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withOpacity(0.3), width: 1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, color: color, size: 18),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontWeight: FontWeight.bold,
+                fontSize: 14,
+              ),
+            ),
+          ],
         ),
       ),
     );

@@ -24,4 +24,20 @@ class UserModel {
   });
 
   String? get token => null;
+
+  factory UserModel.fromJson(Map<String, dynamic> json) {
+    return UserModel(
+      username: json['username'] ?? '',
+      email: json['email'] ?? '',
+      joinDate: json['joinDate'] ?? '',
+      tenantName: json['tenantName'] ?? '',
+      phone: json['phone'] ?? '',
+      businessType: json['businessType'] ?? '',
+      companyName: json['companyName'] ?? '',
+      units: (json['units'] as List<dynamic>?)
+              ?.map((e) => Unit.fromJson(e))
+              .toList() ??
+          [],
+    );
+  }
 }

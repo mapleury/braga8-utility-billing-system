@@ -82,7 +82,7 @@ class HeaderUnitDetailCardComponent extends StatelessWidget {
                   activeMeter,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontFamily: 'DM Sans',
+                    fontFamily: 'SFUIDisplay',
                     fontWeight: FontWeight.w500,
                   ),
                 ),

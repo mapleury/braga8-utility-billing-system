@@ -1,6 +1,6 @@
 import 'package:braga8_mobile/main.dart'; // for apiService singleton
 import 'package:braga8_mobile/views/dashboard/dashboard_screen.dart'; // DashboardScreen
-import 'package:braga8_mobile/views/main_layouts.dart';
+import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/svg.dart';
 
@@ -52,15 +52,15 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (response != null && response['token'] != null) {
         if (!mounted) return;
-        Navigator.pushReplacement(
+        Navigator.pushReplacementNamed(
           context,
-          MaterialPageRoute(
-            builder: (context) => DashboardScreen(
-              api: apiService,
-              token: response['token'],
-              role: response['user']['role'] ?? 'Petugas',
-            ),
-          ),
+          '/dashboard',
+          arguments: {
+            'token': response['token'], // your token string from login response
+            'role':
+                response['user']['role'] ??
+                'Petugas', // your role string from login response
+          },
         );
       } else {
         setState(() => _emailError = "Email atau Password salah.");
@@ -97,7 +97,9 @@ class _SignInScreenState extends State<SignInScreen> {
               ),
               child: Padding(
                 padding: const EdgeInsets.symmetric(
-                    horizontal: 30, vertical: 40),
+                  horizontal: 30,
+                  vertical: 40,
+                ),
                 child: Column(
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -204,7 +206,11 @@ class _SignInScreenState extends State<SignInScreen> {
       padding: const EdgeInsets.only(left: 4, bottom: 8),
       child: Text(
         text,
-        style: TextStyle(color: Colors.white, fontSize: 14, shadows: _uiShadows),
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: 14,
+          shadows: _uiShadows,
+        ),
       ),
     );
   }
@@ -232,7 +238,9 @@ class _SignInScreenState extends State<SignInScreen> {
             decoration: InputDecoration(
               hintText: hint,
               contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20, vertical: 18),
+                horizontal: 20,
+                vertical: 18,
+              ),
               border: InputBorder.none,
               suffixIcon: isPassword
                   ? IconButton(
@@ -279,15 +287,17 @@ class _SignInScreenState extends State<SignInScreen> {
               shape: BoxShape.circle,
             ),
             child: _isRememberMe
-                ? const Icon(Icons.check,
-                    size: 16, color: Color(0xFF8B5A2B))
+                ? const Icon(Icons.check, size: 16, color: Color(0xFF8B5A2B))
                 : null,
           ),
           const SizedBox(width: 8),
           Text(
             "Remember me",
             style: TextStyle(
-                color: Colors.white, fontSize: 14, shadows: _uiShadows),
+              color: Colors.white,
+              fontSize: 14,
+              shadows: _uiShadows,
+            ),
           ),
         ],
       ),

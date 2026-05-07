@@ -1,5 +1,8 @@
 import 'dart:io';
 import 'dart:ui';
+import 'package:braga8_mobile/views/widgets/app_header.dart';
+import 'package:braga8_mobile/views/widgets/main_layouts.dart';
+import 'package:braga8_mobile/views/widgets/success_modal.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,13 +10,13 @@ import 'package:image_picker/image_picker.dart';
 import 'package:braga8_mobile/ApiService.dart';
 import 'package:braga8_mobile/data/models/tenant_model.dart';
 import 'package:braga8_mobile/views/core/app_colors.dart';
-import 'package:braga8_mobile/views/main_layouts.dart';
 
 class InputReadingScreen extends StatefulWidget {
   final Unit? unit;
   final String? category;
   final bool isEdit;
   final String? initialValue;
+  final VoidCallback? onBack;
 
   const InputReadingScreen({
     super.key,
@@ -21,6 +24,7 @@ class InputReadingScreen extends StatefulWidget {
     this.category,
     this.isEdit = false,
     this.initialValue,
+    this.onBack,
   });
 
   @override
@@ -112,11 +116,19 @@ class _InputReadingScreenState extends State<InputReadingScreen>
   /// Returns meters for the currently selected unit filtered by category.
   List<Meter> get _availableMeters {
     if (_selectedUnit == null || _selectedUnit!.meters == null) return [];
-    final typeFilter =
-        _selectedCategory == "Electric" ? "electricity" : "water";
+    final typeFilter = _selectedCategory == "Electric"
+        ? "electricity"
+        : "water";
     return _selectedUnit!.meters!
         .where((m) => m.meterType == typeFilter)
         .toList();
+  }
+
+  bool get _isAlreadySubmitted {
+    if (_selectedUnit == null) return false;
+    if (_selectedCategory == "Electric") return _selectedUnit!.isElecChecked;
+    if (_selectedCategory == "Water") return _selectedUnit!.isWaterChecked;
+    return false;
   }
 
   /// Called when unit or category changes — resets and auto-picks meter.
@@ -163,8 +175,9 @@ class _InputReadingScreenState extends State<InputReadingScreen>
             padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
             decoration: BoxDecoration(
               color: Colors.black.withOpacity(0.75),
-              borderRadius:
-                  const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
               border: Border.all(color: _glassBorder, width: 1.2),
             ),
             child: Column(
@@ -278,6 +291,14 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       return;
     }
 
+    if (!widget.isEdit && _isAlreadySubmitted) {
+      _showSnack(
+        "Meteran ${_selectedCategory.toLowerCase()} unit ini sudah diinput bulan ini",
+        isError: true,
+      );
+      return;
+    }
+
     if (_selectedMeter == null) {
       _showSnack("Pilih meteran terlebih dahulu", isError: true);
       return;
@@ -288,56 +309,199 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       return;
     }
 
-    setState(() => _isSubmitting = true);
+    // ── Validate reading value > previous ────────────────────────────
+    final double? newValue = double.tryParse(_meterController.text.trim());
+    if (newValue == null) {
+      _showSnack("Angka meter tidak valid", isError: true);
+      return;
+    }
 
+    final bool isElectricCheck = _selectedCategory == "Electric";
+    final String? prevValueStr = isElectricCheck
+        ? _selectedUnit!.elecReadingValue
+        : _selectedUnit!.waterReadingValue;
+    final double? prevValue = prevValueStr != null
+        ? double.tryParse(prevValueStr)
+        : null;
+
+    if (prevValue != null && !widget.isEdit) {
+      final double maxElec = 99999.9;
+      final double maxWater = 99999.0;
+      final double maxValue = isElectricCheck ? maxElec : maxWater;
+
+      // Allow reset to zero only if previous was at max
+      final bool isReset = prevValue >= maxValue && newValue == 0;
+
+      if (!isReset && newValue <= prevValue) {
+        _showSnack(
+          "Nilai meter harus lebih besar dari sebelumnya (${prevValue.toStringAsFixed(isElectricCheck ? 1 : 0)})"
+          "${prevValue >= maxValue ? ' atau 0 jika sudah reset' : ''}",
+          isError: true,
+        );
+        return;
+      }
+    }
+    double? latitude;
+    double? longitude;
+    try {
+      final position = await _apiService.determinePosition();
+      latitude = position.latitude;
+      longitude = position.longitude;
+    } catch (e) {
+      if (mounted)
+        _showSnack(
+          "GPS tidak tersedia. Aktifkan lokasi dan coba lagi.",
+          isError: true,
+        );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
     final bool isElectric = _selectedCategory == "Electric";
     final int? readingId = widget.isEdit
         ? (isElectric
-            ? _selectedUnit!.elecReadingId
-            : _selectedUnit!.waterReadingId)
+              ? _selectedUnit!.elecReadingId
+              : _selectedUnit!.waterReadingId)
         : null;
 
     final Map<String, dynamic> payload = {
       'unit_id': _selectedUnit!.id,
-      'type': _selectedCategory.toLowerCase(),
+      'meter_type': _selectedCategory == "Electric"
+          ? "electricity"
+          : "water",
       'reading_value': _meterController.text.trim(),
+      'latitude': latitude,
+      'longitude': longitude,
       if (_noteController.text.trim().isNotEmpty)
         'description': _noteController.text.trim(),
     };
-
     try {
       final bool success = await _apiService.submitMeterReading(
         payload,
         _photoXFile,
         unitId: _selectedUnit!.id,
-        meterId: _selectedMeter!.id, // ← now uses user-selected meter
+        meterId: _selectedMeter!.id,
         isEdit: widget.isEdit,
         readingId: readingId,
       );
+      if (mounted && success) {
+        // Refresh unit data so isElecChecked / isWaterChecked is up-to-date
+        final updatedUnit = _selectedUnit!.copyWith(
+          isElecChecked: _selectedCategory == "Electric"
+              ? true
+              : _selectedUnit!.isElecChecked,
+          isWaterChecked: _selectedCategory == "Water"
+              ? true
+              : _selectedUnit!.isWaterChecked,
+        );
 
-      if (mounted) {
-        if (success) {
-          _showSnack("Data berhasil disimpan ✓");
-          await Future.delayed(const Duration(milliseconds: 800));
-          Navigator.pop(context, true);
-        } else {
-          _showSnack("Server menolak data, cek koneksi / input", isError: true);
-        }
+        await Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => SuccessScreen(
+              category: _selectedCategory,
+              isElecChecked: updatedUnit.isElecChecked,
+              isWaterChecked: updatedUnit.isWaterChecked,
+              onBack: () {
+                Navigator.pop(context); // close SuccessScreen
+                Navigator.pop(context, true); // back to DetailUnit
+              },
+              onInputElectric: () {
+                Navigator.pop(context); // close SuccessScreen
+                // Replace current InputReadingScreen with a fresh Electric one
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InputReadingScreen(
+                      unit: updatedUnit,
+                      category: "Electric",
+                    ),
+                  ),
+                );
+              },
+              onInputWater: () {
+                Navigator.pop(context); // close SuccessScreen
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => InputReadingScreen(
+                      unit: updatedUnit,
+                      category: "Water",
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        );
+
+        if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
-      if (mounted) _showSnack("Gagal menyimpan: $e", isError: true);
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
+      if (mounted)
+        _showSnack(e.toString().replaceFirst("Exception: ", ""), isError: true);
     }
+    setState(() => _isSubmitting = false);
   }
 
   void _showSnack(String msg, {bool isError = false}) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg),
-        backgroundColor: isError ? Colors.redAccent : _orange,
+        duration: const Duration(seconds: 4),
         behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        margin: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        content: ClipRRect(
+          borderRadius: BorderRadius.circular(14),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.black.withOpacity(0.75),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: isError
+                      ? Colors.redAccent.withOpacity(0.5)
+                      : _orange.withOpacity(0.5),
+                  width: 1.2,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: isError
+                          ? Colors.redAccent.withOpacity(0.15)
+                          : _orange.withOpacity(0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      isError
+                          ? Icons.error_outline_rounded
+                          : Icons.check_circle_outline_rounded,
+                      color: isError ? Colors.redAccent : _orange,
+                      size: 18,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      msg,
+                      style: TextStyle(
+                        color: isError ? Colors.redAccent : Colors.white,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -350,7 +514,6 @@ class _InputReadingScreenState extends State<InputReadingScreen>
     return Scaffold(
       backgroundColor: Colors.transparent,
       extendBodyBehindAppBar: true,
-      appBar: _buildAppBar(),
       body: MainLayout(
         child: SafeArea(
           child: FadeTransition(
@@ -364,12 +527,25 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          AppHeader(
+                            title: widget.isEdit
+                                ? "Edit Pembacaan"
+                                : "Input Meter Baru",
+                            titleIcon: widget.isEdit
+                                ? Icons.edit_rounded
+                                : Icons.speed_rounded,
+                            onBack: widget.onBack,
+                          ),
+                          const SizedBox(height: 10),
                           _buildProgressBar(),
                           const SizedBox(height: 28),
 
                           // ── STEP 1: Unit + Category ──────────────────────
                           _buildSectionLabel(
-                              "1", "Pilih Unit", Icons.apartment_rounded),
+                            "1",
+                            "Pilih Unit",
+                            Icons.apartment_rounded,
+                          ),
                           const SizedBox(height: 12),
                           _buildUnitDropdown(),
                           const SizedBox(height: 10),
@@ -406,14 +582,20 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                           // ── STEP 4: Note ─────────────────────────────────
                           const SizedBox(height: 28),
                           _buildSectionLabel(
-                              "4", "Catatan (Opsional)", Icons.notes_rounded),
+                            "4",
+                            "Catatan (Opsional)",
+                            Icons.notes_rounded,
+                          ),
                           const SizedBox(height: 12),
                           _buildNoteField(),
 
                           // ── STEP 5: Photo ─────────────────────────────────
                           const SizedBox(height: 28),
                           _buildSectionLabel(
-                              "5", "Foto Bukti Meter", Icons.camera_alt_rounded),
+                            "5",
+                            "Foto Bukti Meter",
+                            Icons.camera_alt_rounded,
+                          ),
                           const SizedBox(height: 12),
                           _buildPhotoContainer(),
 
@@ -427,37 +609,6 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                   ),
           ),
         ),
-      ),
-    );
-  }
-
-  // ── AppBar ────────────────────────────────────────────────────────────────────
-  AppBar _buildAppBar() {
-    return AppBar(
-      title: Text(
-        widget.isEdit ? "Edit Pembacaan" : "Input Meter Baru",
-        style: const TextStyle(
-          fontWeight: FontWeight.bold,
-          fontSize: 18,
-          color: Colors.white,
-        ),
-      ),
-      backgroundColor: Colors.black.withOpacity(0.35),
-      elevation: 0,
-      centerTitle: true,
-      flexibleSpace: ClipRect(
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(color: Colors.transparent),
-        ),
-      ),
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.white),
-        onPressed: () => Navigator.pop(context),
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(1),
-        child: Container(height: 1, color: _glassBorder),
       ),
     );
   }
@@ -567,8 +718,10 @@ class _InputReadingScreenState extends State<InputReadingScreen>
           dropdownColor: const Color(0xFF1C1A1E),
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: _orange),
           decoration: InputDecoration(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: InputBorder.none,
             hintText: "Pilih unit...",
             hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
@@ -592,8 +745,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                   ),
                   Text(
                     "Unit ${opt.unit.unitNumber} · Lantai ${opt.unit.floor}",
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.white54),
+                    style: const TextStyle(fontSize: 12, color: Colors.white54),
                   ),
                 ],
               ),
@@ -667,8 +819,11 @@ class _InputReadingScreenState extends State<InputReadingScreen>
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(icon,
-                  size: 16, color: isSelected ? _orange : Colors.white38),
+              Icon(
+                icon,
+                size: 16,
+                color: isSelected ? _orange : Colors.white38,
+              ),
               const SizedBox(width: 6),
               Text(
                 label,
@@ -705,17 +860,44 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       );
     }
 
+    if (!widget.isEdit && _isAlreadySubmitted) {
+      return _glassCard(
+        child: Row(
+          children: [
+            Icon(
+              Icons.check_circle_rounded,
+              color: Colors.greenAccent,
+              size: 18,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                "Meteran ${_selectedCategory.toLowerCase()} unit ini sudah diinput bulan ini",
+                style: const TextStyle(color: Colors.greenAccent, fontSize: 14),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
     // Unit selected but no meters for this category
     if (meters.isEmpty) {
       return _glassCard(
         child: Row(
           children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 18),
+            Icon(
+              Icons.warning_amber_rounded,
+              color: Colors.orangeAccent,
+              size: 18,
+            ),
             const SizedBox(width: 10),
             Expanded(
               child: Text(
                 "Unit ini tidak memiliki meteran ${_selectedCategory.toLowerCase()}",
-                style: const TextStyle(color: Colors.orangeAccent, fontSize: 14),
+                style: const TextStyle(
+                  color: Colors.orangeAccent,
+                  fontSize: 14,
+                ),
               ),
             ),
           ],
@@ -732,8 +914,10 @@ class _InputReadingScreenState extends State<InputReadingScreen>
           dropdownColor: const Color(0xFF1C1A1E),
           icon: Icon(Icons.keyboard_arrow_down_rounded, color: _orange),
           decoration: InputDecoration(
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 14,
+            ),
             border: InputBorder.none,
             hintText: "Pilih nomor meteran...",
             hintStyle: const TextStyle(color: Colors.white38, fontSize: 14),
@@ -763,8 +947,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                   ),
                   Text(
                     _meterSubtitle(meter),
-                    style:
-                        const TextStyle(fontSize: 12, color: Colors.white54),
+                    style: const TextStyle(fontSize: 12, color: Colors.white54),
                   ),
                 ],
               ),
@@ -821,8 +1004,10 @@ class _InputReadingScreenState extends State<InputReadingScreen>
           letterSpacing: 2,
         ),
         decoration: InputDecoration(
-          contentPadding:
-              const EdgeInsets.symmetric(horizontal: 16, vertical: 18),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 18,
+          ),
           border: InputBorder.none,
           hintText: "0",
           hintStyle: const TextStyle(
@@ -868,10 +1053,11 @@ class _InputReadingScreenState extends State<InputReadingScreen>
             padding: const EdgeInsets.only(left: 12, right: 8, top: 12),
             child: Icon(Icons.edit_note_rounded, color: _orange, size: 22),
           ),
-          prefixIconConstraints:
-              const BoxConstraints(minWidth: 0, minHeight: 0),
-          counterStyle:
-              const TextStyle(color: Colors.white38, fontSize: 11),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 0,
+            minHeight: 0,
+          ),
+          counterStyle: const TextStyle(color: Colors.white38, fontSize: 11),
         ),
       ),
     );
@@ -932,8 +1118,11 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            Icon(Icons.camera_alt_rounded,
-                                color: _orange, size: 15),
+                            Icon(
+                              Icons.camera_alt_rounded,
+                              color: _orange,
+                              size: 15,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               "Ganti Foto",
@@ -956,8 +1145,11 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                           color: Colors.green,
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.check,
-                            color: Colors.white, size: 13),
+                        child: const Icon(
+                          Icons.check,
+                          color: Colors.white,
+                          size: 13,
+                        ),
                       ),
                     ),
                   ],
@@ -976,10 +1168,15 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                             color: _orangeDim,
                             shape: BoxShape.circle,
                             border: Border.all(
-                                color: _orangeBorder, width: 1.5),
+                              color: _orangeBorder,
+                              width: 1.5,
+                            ),
                           ),
-                          child: Icon(Icons.add_a_photo_rounded,
-                              color: _orange, size: 26),
+                          child: Icon(
+                            Icons.add_a_photo_rounded,
+                            color: _orange,
+                            size: 26,
+                          ),
                         ),
                         const SizedBox(height: 14),
                         const Text(
@@ -993,8 +1190,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                         const SizedBox(height: 5),
                         const Text(
                           "Tap untuk pilih sumber foto",
-                          style:
-                              TextStyle(fontSize: 12, color: Colors.white38),
+                          style: TextStyle(fontSize: 12, color: Colors.white38),
                         ),
                         const SizedBox(height: 12),
                         Row(
@@ -1007,8 +1203,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                             _miniChip(Icons.photo_library_rounded, "Galeri"),
                             if (!kIsWeb) ...[
                               const SizedBox(width: 8),
-                              _miniChip(
-                                  Icons.folder_open_rounded, "File"),
+                              _miniChip(Icons.folder_open_rounded, "File"),
                             ],
                           ],
                         ),
@@ -1056,7 +1251,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
         style: ElevatedButton.styleFrom(
           backgroundColor: _orange.withOpacity(0.3),
           disabledBackgroundColor: Colors.white10,
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 22),
           elevation: 0,
           side: BorderSide(color: _glassBorder, width: 0.9),
           shape: RoundedRectangleBorder(
@@ -1068,13 +1263,14 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                 width: 22,
                 height: 22,
                 child: CircularProgressIndicator(
-                    color: Colors.white, strokeWidth: 2.5),
+                  color: Colors.white,
+                  strokeWidth: 2.5,
+                ),
               )
             : Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.save_rounded,
-                      color: Colors.white, size: 20),
+                  const Icon(Icons.save_rounded, color: Colors.white, size: 20),
                   const SizedBox(width: 8),
                   Text(
                     widget.isEdit ? "Simpan Perubahan" : "Simpan Data",
@@ -1097,7 +1293,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       child: OutlinedButton(
         onPressed: () => Navigator.pop(context),
         style: OutlinedButton.styleFrom(
-          padding: const EdgeInsets.symmetric(vertical: 18),
+          padding: const EdgeInsets.symmetric(vertical: 22),
           side: BorderSide(color: _glassBorder, width: 0.9),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),

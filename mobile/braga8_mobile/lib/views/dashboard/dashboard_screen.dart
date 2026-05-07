@@ -1,10 +1,12 @@
 import 'package:braga8_mobile/ApiService.dart';
+import 'package:braga8_mobile/views/dashboard/components/meter_progress_card.dart';
 import 'package:braga8_mobile/views/history/audit_log_screen.dart';
 import 'package:braga8_mobile/views/daftar_unit_screen.dart';
 import 'package:braga8_mobile/components/notification_modal.dart';
 import 'package:braga8_mobile/components/profile_modal.dart';
-import 'package:braga8_mobile/components/progress_meter.dart';
 import 'package:braga8_mobile/data/models/notification_model.dart';
+import 'package:braga8_mobile/views/input_reading_screen.dart';
+import 'package:braga8_mobile/views/widgets/bottom_navbar_custom.dart';
 import 'package:flutter/material.dart';
 
 // ---------------------------------------------------------------------------
@@ -60,8 +62,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Future<void> _fetchUnreadCount() async {
     try {
-      final List<NotificationModel> list =
-          await widget.api.getNotifications(widget.token);
+      final List<NotificationModel> list = await widget.api.getNotifications(
+        widget.token,
+      );
       if (mounted) {
         setState(() {
           _unreadCount = list.where((n) => n.readAt == null).length;
@@ -101,8 +104,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       builder: (_) => const Center(child: CircularProgressIndicator()),
     );
     try {
-      final List<NotificationModel> list =
-          await widget.api.getNotifications(widget.token);
+      final List<NotificationModel> list = await widget.api.getNotifications(
+        widget.token,
+      );
       if (!context.mounted) return;
       Navigator.pop(context);
       showModalBottomSheet(
@@ -122,8 +126,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     } catch (e) {
       if (!context.mounted) return;
       Navigator.pop(context);
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text("Error: $e")));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Error: $e")));
     }
   }
 
@@ -147,9 +152,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onRefresh: _fetchProgressData,
           onOpenNotifications: _openNotificationCenter,
         ),
-        const Scaffold(body: Center(child: Text("Meter Input"))),
-        DaftarUnitScreen(api: widget.api),
-        const AuditLogScreen(),
+        InputReadingScreen(onBack: () => _onItemTapped(0)),
+        DaftarUnitScreen(api: widget.api, onBack: () => _onItemTapped(0)),
+        AuditLogScreen(onBack: () => _onItemTapped(0)),
         _ProfilePage(api: widget.api, role: widget.role, token: widget.token),
       ];
     }
@@ -184,9 +189,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
       extendBody: true,
       backgroundColor: Colors.grey.shade50,
       body: IndexedStack(index: _selectedIndex, children: _pages),
-      bottomNavigationBar: _BottomNav(
+
+      bottomNavigationBar: BottomNavbarCustom(
         currentIndex: _selectedIndex,
-        isPetugas: isPetugas,
         onTap: _onItemTapped,
       ),
     );
@@ -226,16 +231,16 @@ class _DashboardBody extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey.shade50,
+      backgroundColor: Colors.black,
       appBar: AppBar(
         title: Text(_isPetugas ? 'Petugas Dashboard' : 'Tenant Dashboard'),
-        backgroundColor:
-            _isPetugas ? Colors.orange.shade100 : Colors.blue.shade100,
+        backgroundColor: _isPetugas
+            ? Colors.orange.shade100
+            : Colors.blue.shade100,
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () =>
-                Navigator.pushReplacementNamed(context, '/login'),
+            onPressed: () => Navigator.pushReplacementNamed(context, '/login'),
           ),
         ],
       ),
@@ -245,16 +250,23 @@ class _DashboardBody extends StatelessWidget {
           padding: const EdgeInsets.all(16),
           children: [
             Text(
-              "Selamat Datang, ${api.currentUser?['name'] ?? role}",
-              style: const TextStyle(
-                  fontSize: 18, fontWeight: FontWeight.bold),
+              "Selamat Datang, ${(() {
+                String name = api.currentUser?['name'] ?? role;
+                if (name.isEmpty) return name;
+                return name[0].toUpperCase() + name.substring(1).toLowerCase();
+              })()}",
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.white70,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 5),
             Text(
               _isPetugas
                   ? "Monitor entry progress bulan ini."
                   : "Pantau penggunaan utilitas Anda.",
-              style: TextStyle(color: Colors.grey.shade600),
+              style: TextStyle(color: Colors.white38, fontSize: 15),
             ),
             if (_isPetugas) ...[
               const SizedBox(height: 20),
@@ -262,10 +274,18 @@ class _DashboardBody extends StatelessWidget {
                   ? const Center(
                       child: Padding(
                         padding: EdgeInsets.all(20),
-                        child: CircularProgressIndicator(),
+                        child: CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.orange,
+                          ),
+                        ),
                       ),
                     )
-                  : ProgressMeter(total: totalMeters, read: readMeters),
+                  : MeterProgressCard(
+                      total: totalMeters,
+                      read: readMeters,
+                      period: _currentPeriod(),
+                    ),
             ],
             const SizedBox(height: 20),
             GridView.count(
@@ -278,7 +298,7 @@ class _DashboardBody extends StatelessWidget {
                   ? _petugasItems(context)
                   : _tenantItems(context),
             ),
-            const SizedBox(height: 100), // clearance for floating nav
+            const SizedBox(height: 100),
           ],
         ),
       ),
@@ -286,32 +306,57 @@ class _DashboardBody extends StatelessWidget {
   }
 
   List<Widget> _petugasItems(BuildContext context) => [
-        _GridItem('Meter Input', Icons.speed, () => onNavTap(1)),
-        _GridItem('Daftar Unit', Icons.apartment, () => onNavTap(2)),
-        _GridItem('History', Icons.history, () => onNavTap(3)),
-        _GridItem('Profile', Icons.person,
-            () => showProfileModal(context, api, role, token)),
-        _GridItem(
-          'Notifications',
-          Icons.notifications,
-          () => onOpenNotifications(context),
-          badgeCount: unreadCount,
-        ),
-      ];
+    _GridItem('Meter Input', Icons.speed, () => onNavTap(1)),
+    _GridItem('Daftar Unit', Icons.apartment, () => onNavTap(2)),
+    _GridItem('History', Icons.history, () => onNavTap(3)),
+    _GridItem(
+      'Profile',
+      Icons.person,
+      () => showProfileModal(context, api, role, token),
+    ),
+    _GridItem(
+      'Notifications',
+      Icons.notifications,
+      () => onOpenNotifications(context),
+      badgeCount: unreadCount,
+    ),
+  ];
 
   List<Widget> _tenantItems(BuildContext context) => [
-        _GridItem('Meter Analytics', Icons.bar_chart, () => onNavTap(1)),
-        _GridItem('Invoices', Icons.receipt_long, () => onNavTap(2)),
-        _GridItem('Customer Care', Icons.support_agent, () => onNavTap(3)),
-        _GridItem('Profile', Icons.person,
-            () => showProfileModal(context, api, role, token)),
-        _GridItem(
-          'Notifications',
-          Icons.notifications,
-          () => onOpenNotifications(context),
-          badgeCount: unreadCount,
-        ),
-      ];
+    _GridItem('Meter Analytics', Icons.bar_chart, () => onNavTap(1)),
+    _GridItem('Invoices', Icons.receipt_long, () => onNavTap(2)),
+    _GridItem('Customer Care', Icons.support_agent, () => onNavTap(3)),
+    _GridItem(
+      'Profile',
+      Icons.person,
+      () => showProfileModal(context, api, role, token),
+    ),
+    _GridItem(
+      'Notifications',
+      Icons.notifications,
+      () => onOpenNotifications(context),
+      badgeCount: unreadCount,
+    ),
+  ];
+
+  String _currentPeriod() {
+    final now = DateTime.now();
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'Mei',
+      'Jun',
+      'Jul',
+      'Agu',
+      'Sep',
+      'Okt',
+      'Nov',
+      'Des',
+    ];
+    return '${months[now.month - 1]} ${now.year}';
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -351,8 +396,7 @@ class _GridItem extends StatelessWidget {
             const SizedBox(height: 12),
             Text(
               label,
-              style: const TextStyle(
-                  fontWeight: FontWeight.w600, fontSize: 13),
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
               textAlign: TextAlign.center,
             ),
           ],
@@ -483,7 +527,7 @@ class _NavItem extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Profile page tab
 // ---------------------------------------------------------------------------
-class _ProfilePage extends StatelessWidget {
+class _ProfilePage extends StatefulWidget {
   final ApiService api;
   final String role;
   final String token;
@@ -495,12 +539,26 @@ class _ProfilePage extends StatelessWidget {
   });
 
   @override
+  State<_ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<_ProfilePage> {
+  bool _modalShown = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_modalShown) {
+      _modalShown = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted)
+          showProfileModal(context, widget.api, widget.role, widget.token);
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      showProfileModal(context, api, role, token);
-    });
-    return const Scaffold(
-      body: Center(child: CircularProgressIndicator()),
-    );
+    return const Scaffold(body: Center(child: CircularProgressIndicator()));
   }
 }

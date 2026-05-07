@@ -28,7 +28,6 @@ public function apiIndex()
 {
     $logs = AuditLog::with('user')
         ->where('user_id', FacadesAuth::id())
-        ->where('is_archived', false)
         ->latest()
         ->paginate(10);
 

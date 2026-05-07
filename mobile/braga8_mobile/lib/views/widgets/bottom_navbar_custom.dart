@@ -5,7 +5,11 @@ class BottomNavbarCustom extends StatelessWidget {
   final int currentIndex;
   final Function(int) onTap;
 
-  const BottomNavbarCustom({super.key, required this.currentIndex, required this.onTap});
+  const BottomNavbarCustom({
+    super.key,
+    required this.currentIndex,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -24,10 +28,9 @@ class BottomNavbarCustom extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             _navItem(0, Icons.home_filled, "Home"),
-            _navItem(1, Icons.speed, "Meter"),
-            _navItem(2, Icons.list_alt_rounded, "Invoices"),
+            _navItem(1, Icons.speed, "Meter Input"),
+            _navItem(2, Icons.store_outlined, "Daftar Unit"),
             _navItem(3, Icons.history, "History"),
-            _navItem(4, Icons.feedback, "Report"),
           ],
         ),
       ),
@@ -53,9 +56,7 @@ class BottomNavbarCustom extends StatelessWidget {
           children: [
             Icon(
               icon,
-              color: isActive
-                  ? AppColors.primaryOrange
-                  : Colors.white.withAlpha(180),
+              color: isActive ? Colors.black87 : Colors.white.withAlpha(180),
               size: 24,
             ),
             if (isActive) ...[
@@ -63,7 +64,7 @@ class BottomNavbarCustom extends StatelessWidget {
               Text(
                 label,
                 style: TextStyle(
-                  color: AppColors.primaryOrange,
+                  color: Colors.black87,
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),

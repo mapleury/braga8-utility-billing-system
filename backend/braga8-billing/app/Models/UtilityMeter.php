@@ -40,16 +40,24 @@ class UtilityMeter extends Model
         return $this->belongsTo(Tariff::class);
     }
 
-    public function readings() 
-    {
-        return $this->hasMany(MeterReading::class, 'meter_id');
-    }
+  public function readings()
+{
+    return $this->hasMany(MeterReading::class, 'meter_id')
+                ->orderBy('recorded_at', 'desc');
+}
 
-    /**
-     * Gets the most recent reading for this meter
-     */
-    public function latestReading() 
-    {
-        return $this->hasOne(MeterReading::class, 'meter_id')->latestOfMany('recorded_at');
-    }
+public function latestReading()
+{
+    return $this->hasOne(MeterReading::class, 'meter_id')
+                ->orderBy('recorded_at', 'desc');
+}
+
+
+public function previousReading()
+{
+    return $this->hasOne(MeterReading::class, 'meter_id')
+                ->orderBy('recorded_at', 'desc')
+                ->skip(1)
+                ->take(1);
+}
 }

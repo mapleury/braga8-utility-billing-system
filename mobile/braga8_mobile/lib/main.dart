@@ -1,8 +1,10 @@
 import 'package:braga8_mobile/ApiService.dart';
+import 'package:braga8_mobile/views/dashboard/dashboard_screen.dart';
+import 'package:braga8_mobile/views/onboarding_screen.dart';
 import 'package:braga8_mobile/views/sign_in_screen.dart';
+import 'package:braga8_mobile/views/splash/splash_screen.dart';
 import 'package:flutter/material.dart';
 
-// Global singleton — satu token untuk seluruh app
 final ApiService apiService = ApiService();
 
 void main() {
@@ -17,17 +19,25 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Braga 8 System',
-      theme: ThemeData(
-        useMaterial3: true,
-        fontFamily: 'Inter',
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF723CFF),
-          brightness: Brightness.dark,
-        ),
-      ),
-      initialRoute: '/login',
+      theme: ThemeData(fontFamily: 'SFUIDisplay'),
+
+      home: const SplashScreen(),
       routes: {
+        '/onboarding': (context) => const OnboardingScreen(),
         '/login': (context) => const SignInScreen(),
+      },
+      onGenerateRoute: (settings) {
+        if (settings.name == '/dashboard') {
+          final args = settings.arguments as Map<String, dynamic>;
+          return MaterialPageRoute(
+            builder: (_) => DashboardScreen(
+              api: apiService,
+              token: args['token'],
+              role: args['role'],
+            ),
+          );
+        }
+        return null;
       },
     );
   }

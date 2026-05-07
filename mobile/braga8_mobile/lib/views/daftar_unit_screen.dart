@@ -4,9 +4,10 @@ import 'package:braga8_mobile/ApiService.dart';
 import 'package:braga8_mobile/data/models/tenant_model.dart';
 import 'package:braga8_mobile/views/core/app_colors.dart';
 import 'package:braga8_mobile/views/detail_unit_screen.dart';
-import 'package:braga8_mobile/views/main_layouts.dart';
 import 'package:braga8_mobile/views/widgets/action_button_table.dart';
+import 'package:braga8_mobile/views/widgets/app_header.dart';
 import 'package:braga8_mobile/views/widgets/custom_search_bar.dart';
+import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:braga8_mobile/views/widgets/page_header.dart';
 import 'package:braga8_mobile/views/widgets/status_badge.dart';
 import 'package:braga8_mobile/views/widgets/table_card.dart';
@@ -14,13 +15,15 @@ import 'package:flutter/material.dart';
 
 class DaftarUnitScreen extends StatefulWidget {
   final ApiService api;
-  const DaftarUnitScreen({super.key, required this.api});
+  final VoidCallback? onBack;
+  const DaftarUnitScreen({super.key, required this.api, this.onBack});
 
   @override
   State<DaftarUnitScreen> createState() => _DaftarUnitScreenState();
 }
 
-class _DaftarUnitScreenState extends State<DaftarUnitScreen> {
+class _DaftarUnitScreenState extends State<DaftarUnitScreen>
+    with WidgetsBindingObserver {
   late Future<List<Tenant>> _tenantData;
   final TextEditingController _searchController = TextEditingController();
 
@@ -30,14 +33,23 @@ class _DaftarUnitScreenState extends State<DaftarUnitScreen> {
 
   @override
   void initState() {
+    WidgetsBinding.instance.addObserver(this);
     super.initState();
     _loadData();
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _searchController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadData();
+    }
   }
 
   void _loadData() {
@@ -395,13 +407,15 @@ class _DaftarUnitScreenState extends State<DaftarUnitScreen> {
             builder: (context, snapshot) {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(
-                  child: CircularProgressIndicator(color: AppColors.primaryOrange),
+                  child: CircularProgressIndicator(
+                    color: AppColors.primaryOrange,
+                  ),
                 );
               }
               if (snapshot.hasError) {
                 return Center(
                   child: Text(
-                    "Error: ${snapshot.error}",
+                    "Gagal memuat data: ${snapshot.error}",
                     style: const TextStyle(color: Colors.redAccent),
                   ),
                 );
@@ -415,7 +429,13 @@ class _DaftarUnitScreenState extends State<DaftarUnitScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 15),
+                    AppHeader(
+                      title: "Daftar Unit",
+                      titleIcon: Icons.house_outlined,
+                      onBack: widget.onBack,
+                    ),
+                    const SizedBox(height: 16),
                     const PageHeader(
                       title: "Daftar Unit",
                       subtitle: "Braga8 Utility Billing Management",
@@ -497,7 +517,7 @@ class _DaftarUnitScreenState extends State<DaftarUnitScreen> {
                             "Lantai",
                             "Meter Listrik",
                             "Meter Air",
-                            "Aksi",
+                            "Tindakan",
                           ],
                           data: units.map((u) => {'object': u}).toList(),
                           rowBuilder: (item) {
@@ -536,9 +556,10 @@ class _DaftarUnitScreenState extends State<DaftarUnitScreen> {
                                         builder: (context) => DetailUnitScreen(
                                           shopName: tenant.name,
                                           unit: unit,
+                                          onBack: () => Navigator.pop(context),
                                         ),
                                       ),
-                                    );
+                                    ).then((_) => _loadData());
                                   },
                                 ),
                               ),

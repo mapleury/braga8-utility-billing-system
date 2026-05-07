@@ -34,9 +34,8 @@ class ActionButtonTable extends StatelessWidget {
             SizedBox(width: 4),
             Text(
               label,
-              style: TextStyle(color: Colors.white, fontSize: 10),
-              textAlign: TextAlign
-                  .center, 
+              style: TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w500),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

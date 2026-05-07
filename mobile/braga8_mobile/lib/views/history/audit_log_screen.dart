@@ -1,15 +1,19 @@
 import 'package:braga8_mobile/ApiService.dart';
+import 'dart:async';
 import 'package:braga8_mobile/data/models/audit_log_model.dart';
+import 'package:braga8_mobile/views/core/app_colors.dart';
 import 'package:braga8_mobile/views/history/components/pop_up_detail.dart';
-import 'package:braga8_mobile/views/main_layouts.dart';
+import 'package:braga8_mobile/views/widgets/app_header.dart';
 import 'package:braga8_mobile/views/widgets/custom_search_bar.dart';
+import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:braga8_mobile/views/widgets/page_header.dart';
 import 'package:braga8_mobile/views/widgets/table_card.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 class AuditLogScreen extends StatefulWidget {
-  const AuditLogScreen({super.key});
+  final VoidCallback? onBack;
+  const AuditLogScreen({super.key, this.onBack});
 
   @override
   State<AuditLogScreen> createState() => _AuditLogScreenState();
@@ -17,6 +21,7 @@ class AuditLogScreen extends StatefulWidget {
 
 class _AuditLogScreenState extends State<AuditLogScreen> {
   final ApiService _apiService = ApiService();
+  Timer? _refreshTimer;
 
   int _perPage = 10;
   int _currentPage = 1;
@@ -32,6 +37,9 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
   void initState() {
     super.initState();
     _fetchData();
+    _refreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      _fetchData();
+    });
   }
 
   Future<void> _fetchData() async {
@@ -83,6 +91,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
 
   @override
   void dispose() {
+    _refreshTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
@@ -111,7 +120,35 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const SizedBox(height: 40),
+                const SizedBox(height: 15),
+                AppHeader(
+                  title: "Log Aktivitas",
+                  titleIcon: Icons.history_rounded,
+                  onBack: widget.onBack,
+                  trailing: GestureDetector(
+                    onTap: () => _fetchData(), // your reload function
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 10,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.07),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.12),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.refresh_rounded,
+                        color: Colors.white70,
+                        size: 18,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
 
                 const PageHeader(
                   title: "Tabel Aktivitas",
@@ -130,7 +167,11 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                 const SizedBox(height: 30),
 
                 if (_isLoading)
-                  const Center(child: CircularProgressIndicator())
+                  const Center(
+                    child: CircularProgressIndicator(
+                      color: AppColors.primaryOrange,
+                    ),
+                  )
                 else if (_filteredLogs.isEmpty)
                   const Center(
                     child: Padding(
