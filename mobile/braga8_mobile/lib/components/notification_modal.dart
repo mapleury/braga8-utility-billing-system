@@ -2,7 +2,7 @@ import 'dart:ui';
 import 'package:braga8_mobile/views/core/app_colors.dart';
 import 'package:flutter/material.dart';
 import '../data/models/notification_model.dart';
-import '../ApiService.dart'; 
+import '../ApiService.dart';
 
 class NotificationModal extends StatelessWidget {
   final List<NotificationModel> notifications;
@@ -23,22 +23,16 @@ class NotificationModal extends StatelessWidget {
     return ClipRRect(
       borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
       child: BackdropFilter(
-        filter: ImageFilter.blur(
-          sigmaX: 15,
-          sigmaY: 15,
-        ), 
+        filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
         child: Container(
           constraints: BoxConstraints(
-            maxHeight:
-                MediaQuery.of(context).size.height *
-                0.75, 
+            maxHeight: MediaQuery.of(context).size.height * 0.75,
           ),
           decoration: BoxDecoration(
-           
             color: Colors.black.withValues(alpha: 0.7),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(30)),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.15), 
+              color: Colors.white.withValues(alpha: 0.15),
               width: 1.5,
             ),
           ),
@@ -122,6 +116,38 @@ class NotificationModal extends StatelessWidget {
                         },
                       ),
               ),
+
+              const Divider(color: Colors.white24, height: 1),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _buildBottomButton(
+                        label: "Tandai Semua Dibaca",
+                        icon: Icons.done_all,
+                        color: Colors.orange.withOpacity( 0.8),
+                        onTap: () async {
+                          await api.markAllAsRead(token);
+                          onRefresh();
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: _buildBottomButton(
+                        label: "Hapus Semua",
+                        icon: Icons.delete_sweep_outlined,
+                        color: Colors.redAccent,
+                        onTap: () async {
+                          await api.clearAllNotifications(token);
+                          onRefresh();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
         ),
@@ -138,9 +164,11 @@ class NotificationModal extends StatelessWidget {
         alignment: Alignment.centerRight,
         padding: const EdgeInsets.only(right: 20),
         decoration: BoxDecoration(
-          color: AppColors.primaryOrange.withValues(
-            alpha: 0.6,
-          ), 
+          border: Border.all(
+            color: AppColors.primaryOrange.withValues(alpha: 0.3),
+            width: 1,
+          ),
+          color: AppColors.white40.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
         ),
         child: const Row(
@@ -159,10 +187,9 @@ class NotificationModal extends StatelessWidget {
         ),
       ),
       confirmDismiss: (direction) async {
-      
         await api.markAsRead(item.id, token);
         onRefresh();
-        return false; 
+        return false;
       },
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 400),
@@ -268,4 +295,42 @@ class NotificationModal extends StatelessWidget {
       ),
     );
   }
+
+ Widget _buildBottomButton({
+  required String label,
+  required IconData icon,
+  required Color color,
+  required VoidCallback onTap,
+}) {
+  return GestureDetector(
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.symmetric(vertical: 18),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: color.withValues(alpha: 0.3),
+          width: 1,
+
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, color: color, size: 18),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 }

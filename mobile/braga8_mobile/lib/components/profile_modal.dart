@@ -1,4 +1,5 @@
 import 'dart:ui';
+import 'package:braga8_mobile/services/session_services.dart';
 import 'package:braga8_mobile/views/core/app_colors.dart';
 import 'package:flutter/material.dart';
 import 'package:braga8_mobile/ApiService.dart';
@@ -118,13 +119,16 @@ class _ProfileControllerSheetState extends State<ProfileControllerSheet> {
 
   void _handleLogout() async {
     if (!showLogoutConfirm) {
-      // First tap: Show confirmation UI
       setState(() => showLogoutConfirm = true);
     } else {
-      // Second tap (on the "Yes" button): Execute logout
       await widget.api.logout(widget.token);
+      await SessionService.clearSession(); // ← add this
       if (mounted) {
-        Navigator.of(context).popUntil((route) => route.isFirst);
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/login',
+          (route) =>
+              false, // clears entire stack so back button can't return to dashboard
+        );
       }
     }
   }

@@ -1,7 +1,7 @@
+import 'package:braga8_mobile/main.dart';
+import 'package:braga8_mobile/services/session_services.dart';
 import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:flutter/material.dart';
-import 'dart:async';
-// Note: Ensure MainLayout is imported correctly if you use it for the background
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -16,29 +16,46 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    debugPrint('✅ SplashScreen mounted');
 
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted) setState(() => _opacity = 1.0);
     });
 
-    Future.delayed(const Duration(seconds: 3), () {
-      debugPrint('⏱️ Timer fired, navigating to onboarding');
-      if (mounted) Navigator.pushReplacementNamed(context, '/onboarding');
+    Future.delayed(const Duration(seconds: 2), () async {
+      if (!mounted) return;
+
+      final session = await SessionService.getSession();
+      if (!mounted) return;
+
+      if (session != null) {
+        // Restore ApiService user state from session
+        apiService.setCurrentUser({
+          'name': session['name'] ?? '',
+          'role': session['role'] ?? '',
+        });
+
+        Navigator.pushReplacementNamed(
+          context,
+          '/dashboard',
+          arguments: {'token': session['token']!, 'role': session['role']!},
+        );
+      } else {
+        Navigator.pushReplacementNamed(context, '/onboarding');
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-       backgroundColor: Colors.black26,
+      backgroundColor: Colors.black,
       body: MainLayout(
         child: Stack(
           children: [
             Center(
               child: AnimatedOpacity(
                 opacity: _opacity,
-                duration: Duration(milliseconds: 1500),
+                duration: const Duration(milliseconds: 1500),
                 curve: Curves.easeIn,
                 child: SizedBox(
                   width: 90,
@@ -51,4 +68,5 @@ class _SplashScreenState extends State<SplashScreen> {
       ),
     );
   }
+  
 }

@@ -1,87 +1,104 @@
 import 'package:braga8_mobile/ApiService.dart';
-import 'package:braga8_mobile/components/notification_modal.dart';
-import 'package:braga8_mobile/data/models/user_model.dart';
+import 'package:braga8_mobile/components/profile_modal.dart';
 import 'package:braga8_mobile/views/core/app_colors.dart';
-import 'package:braga8_mobile/views/dashboard/components/account_modal_tenant.dart';
 import 'package:flutter/material.dart';
 
 class HeaderNavbar extends StatelessWidget {
-  final UserModel user;
-  final ApiService api;
-  final String token; // Added token to pass to the modal
+  final ApiService? api;
+  final String token;
+  final int unreadCount;
+  final VoidCallback? onNotificationTap;
 
   const HeaderNavbar({
     super.key,
-    required this.user,
-    required this.token, // Require token for API calls
     required this.api,
+    required this.token,
+    this.unreadCount = 0,
+    this.onNotificationTap,
   });
+
+  void _openProfile(BuildContext context) {
+    if (api == null) return;
+    final role = api!.currentUser?['role'] ?? 'petugas';
+    showProfileModal(context, api!, role, token);
+  }
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 15),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
-          InkWell(
-            onTap: () async {
-              final notifications = await api.getNotifications(
-                user.token ?? "",
-              );
-
-              showDialog(
-                context: context,
-                builder: (context) => NotificationModal(
-                  notifications: notifications, // Pass the fetched data
-                  token: user.token ?? "",
-                  api: api,
-                  onRefresh: () {
-                    /* Add refresh logic here */
-                  },
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: onNotificationTap,
+              borderRadius: BorderRadius.circular(24),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(8, 8, 14, 8),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    const Icon(
+                      Icons.notifications_rounded,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                    if (unreadCount > 0)
+                      Positioned(
+                        top: -5,
+                        right: -8,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: AppColors.primaryOrange,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 20,
+                            minHeight: 20,
+                          ),
+                          child: Text(
+                            unreadCount > 99 ? '99+' : '$unreadCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
                 ),
-              );
-
-              // Trigger the modal - the modal should handle the
-              // internal FutureBuilder or call to api.getNotifications()
-              showDialog(
-                context: context,
-                barrierDismissible: true,
-                builder: (context) => NotificationModal(
-                  notifications:
-                      const [], // If the modal fetches its own data, leave empty
-                  token: token,
-                  api: api,
-                  onRefresh: () {
-                    // Logic to refresh data if necessary
-                    print("Refreshing notifications...");
-                  },
-                ),
-              );
-            },
-            borderRadius: BorderRadius.circular(20),
-            child: const Padding(
-              padding: EdgeInsets.all(8),
-              child: Icon(Icons.notifications, color: Colors.white, size: 28),
+              ),
             ),
           ),
-          const SizedBox(width: 20),
-          InkWell(
-            onTap: () => showDialog(
-              context: context,
-              builder: (context) => AccountModalTenant(user: user),
-            ),
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              padding: const EdgeInsets.all(2),
-              decoration: const BoxDecoration(
-                color: AppColors.primaryOrange,
-                shape: BoxShape.circle,
-              ),
-              child: CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.grey.shade300,
-                child: const Icon(Icons.person, color: Colors.white),
+          const SizedBox(width: 4),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: () => _openProfile(context),
+              borderRadius: BorderRadius.circular(30),
+              child: Padding(
+                padding: const EdgeInsets.all(4),
+                child: Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    color: AppColors.primaryOrange,
+                    shape: BoxShape.circle,
+                  ),
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: Colors.grey.shade300,
+                    child: const Icon(
+                      Icons.person,
+                      color: Colors.white,
+                      size: 22,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),

@@ -6,6 +6,9 @@ class SuccessScreen extends StatefulWidget {
   final String category;
   final bool isElecChecked;
   final bool isWaterChecked;
+
+  /// Called after all screens are popped. Use this to refresh DetailUnit
+  /// or navigate to a new InputReadingScreen from a safe context.
   final VoidCallback onBack;
   final VoidCallback? onInputElectric;
   final VoidCallback? onInputWater;
@@ -43,15 +46,11 @@ class _SuccessScreenState extends State<SuccessScreen>
   void initState() {
     super.initState();
 
-    // ── Icon: pop in ──────────────────────────────────────────────
     _iconCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 600),
     );
-    _iconScale = CurvedAnimation(
-      parent: _iconCtrl,
-      curve: Curves.elasticOut,
-    );
+    _iconScale = CurvedAnimation(parent: _iconCtrl, curve: Curves.elasticOut);
     _iconOpacity = Tween<double>(begin: 0, end: 1).animate(
       CurvedAnimation(
         parent: _iconCtrl,
@@ -59,7 +58,6 @@ class _SuccessScreenState extends State<SuccessScreen>
       ),
     );
 
-    // ── Text: fade + slide up ─────────────────────────────────────
     _contentCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -70,7 +68,6 @@ class _SuccessScreenState extends State<SuccessScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _contentCtrl, curve: Curves.easeOut));
 
-    // ── Buttons: staggered fade + slide up ───────────────────────
     _btnCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 450),
@@ -81,7 +78,6 @@ class _SuccessScreenState extends State<SuccessScreen>
       end: Offset.zero,
     ).animate(CurvedAnimation(parent: _btnCtrl, curve: Curves.easeOut));
 
-    // ── Chain animations ──────────────────────────────────────────
     _iconCtrl.forward().then((_) {
       _contentCtrl.forward().then((_) {
         _btnCtrl.forward();
@@ -97,24 +93,33 @@ class _SuccessScreenState extends State<SuccessScreen>
     super.dispose();
   }
 
+  /// Pops ALL pushed routes until we're back at DashboardScreen (the first
+  /// route), then fires [callback] so the caller can react (refresh / push
+  /// a new screen) from a guaranteed-valid context.
+  void _popToRootThen(VoidCallback callback) {
+    Navigator.of(
+      context,
+    ).popUntil((route) => route.settings.name == '/daftar-unit');
+    callback();
+  }
+
   @override
   Widget build(BuildContext context) {
-    final bool showElecBtn = widget.category == "Water" && !widget.isElecChecked;
-    final bool showWaterBtn = widget.category == "Electric" && !widget.isWaterChecked;
+    final bool showElecBtn =
+        widget.category == "Water" && !widget.isElecChecked;
+    final bool showWaterBtn =
+        widget.category == "Electric" && !widget.isWaterChecked;
 
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
         fit: StackFit.expand,
         children: [
-          // ── Background ──────────────────────────────────────────
           Image.asset('assets/modal-bg.png', fit: BoxFit.cover),
           BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
             child: Container(color: Colors.black.withOpacity(0.6)),
           ),
-
-          // ── Content ─────────────────────────────────────────────
           SafeArea(
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 32),
@@ -123,7 +128,6 @@ class _SuccessScreenState extends State<SuccessScreen>
                 children: [
                   const Spacer(flex: 3),
 
-                  // ── Animated icon ─────────────────────────────
                   FadeTransition(
                     opacity: _iconOpacity,
                     child: ScaleTransition(
@@ -131,7 +135,6 @@ class _SuccessScreenState extends State<SuccessScreen>
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // Glow ring
                           Container(
                             width: 180,
                             height: 180,
@@ -154,7 +157,6 @@ class _SuccessScreenState extends State<SuccessScreen>
 
                   const SizedBox(height: 32),
 
-                  // ── Animated text ─────────────────────────────
                   FadeTransition(
                     opacity: _contentFade,
                     child: SlideTransition(
@@ -189,7 +191,6 @@ class _SuccessScreenState extends State<SuccessScreen>
 
                   const Spacer(flex: 3),
 
-                  // ── Animated buttons ──────────────────────────
                   FadeTransition(
                     opacity: _btnFade,
                     child: SlideTransition(
@@ -200,7 +201,9 @@ class _SuccessScreenState extends State<SuccessScreen>
                             _ActionButton(
                               icon: Icons.bolt_rounded,
                               label: "Input Meter Listrik",
-                              onTap: widget.onInputElectric!,
+                              onTap: () => _popToRootThen(
+                                widget.onInputElectric ?? widget.onBack,
+                              ),
                               filled: true,
                             ),
                             const SizedBox(height: 12),
@@ -209,7 +212,9 @@ class _SuccessScreenState extends State<SuccessScreen>
                             _ActionButton(
                               icon: Icons.water_drop_rounded,
                               label: "Input Meter Air",
-                              onTap: widget.onInputWater!,
+                              onTap: () => _popToRootThen(
+                                widget.onInputWater ?? widget.onBack,
+                              ),
                               filled: true,
                             ),
                             const SizedBox(height: 12),
@@ -217,7 +222,7 @@ class _SuccessScreenState extends State<SuccessScreen>
                           _ActionButton(
                             icon: Icons.arrow_back_rounded,
                             label: "Kembali ke Detail Unit",
-                            onTap: widget.onBack,
+                            onTap: () => _popToRootThen(widget.onBack),
                             filled: false,
                           ),
                         ],
@@ -236,7 +241,6 @@ class _SuccessScreenState extends State<SuccessScreen>
   }
 }
 
-// ── Extracted button widget ───────────────────────────────────────────────────
 class _ActionButton extends StatefulWidget {
   final IconData icon;
   final String label;

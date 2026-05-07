@@ -1,6 +1,6 @@
 import 'package:braga8_mobile/data/models/tenant_model.dart';
 import 'package:braga8_mobile/views/core/app_colors.dart';
-import 'package:braga8_mobile/views/detail_unit_screen.dart';
+import 'package:braga8_mobile/views/daftar_unit/detail_unit_screen.dart';
 import 'package:flutter/material.dart';
 
 class UnitMeterTableComponent extends StatelessWidget {

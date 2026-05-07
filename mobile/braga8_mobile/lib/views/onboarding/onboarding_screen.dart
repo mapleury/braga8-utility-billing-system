@@ -1,5 +1,5 @@
-import 'package:braga8_mobile/views/sign_in_screen.dart';
-import 'package:braga8_mobile/views/widgets/light_brown_btn.dart';
+import 'package:braga8_mobile/views/sign_in/sign_in_screen.dart';
+import 'package:braga8_mobile/views/widgets/light_brown_btn%20copy.dart';
 import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:flutter/material.dart';
 import 'dart:async';
@@ -20,7 +20,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
     Timer(const Duration(seconds: 2), () {
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => SignInScreen()),
+        );
         setState(() {
           _isLoading = false;
         });
@@ -28,11 +31,18 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     });
   }
 
-  @override
-  void initState() {
-    super.initState();
-    debugPrint('📋 OnboardingScreen mounted');
+ @override
+void initState() {
+  super.initState();
+  debugPrint('📋 OnboardingScreen mounted');
+  
+  // Force full stack trace
+  try {
+    throw Exception('trace');
+  } catch (e, stack) {
+    debugPrint(stack.toString());
   }
+}
 
   @override
   Widget build(BuildContext context) {
@@ -74,7 +84,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Spacer(flex: 8),
-                    Image.asset('assets/small-logo.png', height: 22),
+                    Image.asset('../../../assets/small-logo.png', height: 22),
                     SizedBox(height: 20),
                     RichText(
                       text: TextSpan(

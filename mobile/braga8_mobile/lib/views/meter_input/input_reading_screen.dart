@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:ui';
+import 'package:braga8_mobile/views/meter_input/meter_camera_screen.dart';
 import 'package:braga8_mobile/views/widgets/app_header.dart';
 import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:braga8_mobile/views/widgets/success_modal.dart';
@@ -44,14 +45,14 @@ class _InputReadingScreenState extends State<InputReadingScreen>
   String _selectedCategory = "Electric";
   bool _isLoadingTenants = true;
 
-  // ── NEW: Selected Meter ───────────────────────────────────────────────────────
+  // ── Selected Meter ────────────────────────────────────────────────────────────
   Meter? _selectedMeter;
 
   // ── Photo ─────────────────────────────────────────────────────────────────────
   File? _photoFile;
   XFile? _photoXFile;
   Uint8List? _photoBytes;
-  final ImagePicker _picker = ImagePicker();
+  // REMOVED: ImagePicker _picker — camera is now handled by MeterCameraScreen
 
   // ── Submit ────────────────────────────────────────────────────────────────────
   bool _isSubmitting = false;
@@ -102,10 +103,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       setState(() {
         _tenants = tenants;
         _isLoadingTenants = false;
-        // Auto-select meter if unit was pre-selected (coming from DetailUnitScreen)
-        if (_selectedUnit != null) {
-          _autoSelectMeter();
-        }
+        if (_selectedUnit != null) _autoSelectMeter();
       });
     } catch (e) {
       setState(() => _isLoadingTenants = false);
@@ -113,7 +111,6 @@ class _InputReadingScreenState extends State<InputReadingScreen>
     }
   }
 
-  /// Returns meters for the currently selected unit filtered by category.
   List<Meter> get _availableMeters {
     if (_selectedUnit == null || _selectedUnit!.meters == null) return [];
     final typeFilter = _selectedCategory == "Electric"
@@ -131,155 +128,56 @@ class _InputReadingScreenState extends State<InputReadingScreen>
     return false;
   }
 
-  /// Called when unit or category changes — resets and auto-picks meter.
   void _autoSelectMeter() {
     final meters = _availableMeters;
-    if (meters.length == 1) {
-      // Only one option — pick it automatically
-      _selectedMeter = meters.first;
-    } else {
-      // Multiple or none — force user to pick
-      _selectedMeter = null;
-    }
+    _selectedMeter = meters.length == 1 ? meters.first : null;
   }
 
-  // ── Photo picker ──────────────────────────────────────────────────────────────
-  Future<void> _pickPhoto(ImageSource source) async {
+  // ── Photo — CAMERA ONLY ───────────────────────────────────────────────────────
+  /// Opens [MeterCameraScreen] and stores the captured [XFile].
+  Future<void> _openCamera() async {
+    // On web there is no native camera overlay — fall back to image_picker
+    if (kIsWeb) {
+      try {
+        final picker = ImagePicker();
+        final XFile? image = await picker.pickImage(
+          source: ImageSource.camera,
+          imageQuality: 85,
+          preferredCameraDevice: CameraDevice.rear,
+        );
+        if (image == null) return;
+        final bytes = await image.readAsBytes();
+        setState(() {
+          _photoXFile = image;
+          _photoBytes = bytes;
+        });
+      } on PlatformException catch (e) {
+        _showSnack("Akses kamera ditolak: ${e.message}", isError: true);
+      }
+      return;
+    }
+
+    // Native: push the custom camera overlay
+    final XFile? photo = await Navigator.push<XFile>(
+      context,
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => const MeterCameraScreen(),
+      ),
+    );
+
+    if (photo == null) return; // user cancelled
+
     try {
-      final XFile? image = await _picker.pickImage(
-        source: source,
-        imageQuality: 85,
-        preferredCameraDevice: CameraDevice.rear,
-      );
-      if (image == null) return;
-      final bytes = await image.readAsBytes();
+      final bytes = await photo.readAsBytes();
       setState(() {
-        _photoXFile = image;
+        _photoXFile = photo;
         _photoBytes = bytes;
-        if (!kIsWeb) _photoFile = File(image.path);
+        _photoFile = File(photo.path);
       });
-    } on PlatformException catch (e) {
-      _showSnack("Akses ditolak: ${e.message}", isError: true);
+    } catch (e) {
+      _showSnack("Gagal memproses foto: $e", isError: true);
     }
-  }
-
-  void _showPhotoSourceSheet() {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.transparent,
-      builder: (_) => ClipRRect(
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-          child: Container(
-            padding: const EdgeInsets.fromLTRB(24, 16, 24, 36),
-            decoration: BoxDecoration(
-              color: Colors.black.withOpacity(0.75),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(28),
-              ),
-              border: Border.all(color: _glassBorder, width: 1.2),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 40,
-                  height: 5,
-                  margin: const EdgeInsets.only(bottom: 20),
-                  decoration: BoxDecoration(
-                    color: Colors.white24,
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                const Text(
-                  "Pilih Sumber Foto",
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.4,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    if (!kIsWeb) ...[
-                      Expanded(
-                        child: _sourceOption(
-                          icon: Icons.camera_alt_rounded,
-                          label: "Kamera",
-                          onTap: () {
-                            Navigator.pop(context);
-                            _pickPhoto(ImageSource.camera);
-                          },
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      child: _sourceOption(
-                        icon: Icons.photo_library_rounded,
-                        label: "Galeri",
-                        onTap: () {
-                          Navigator.pop(context);
-                          _pickPhoto(ImageSource.gallery);
-                        },
-                      ),
-                    ),
-                    if (!kIsWeb) ...[
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _sourceOption(
-                          icon: Icons.folder_open_rounded,
-                          label: "File",
-                          onTap: () {
-                            Navigator.pop(context);
-                            _pickPhoto(ImageSource.gallery);
-                          },
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _sourceOption({
-    required IconData icon,
-    required String label,
-    required VoidCallback onTap,
-  }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 20),
-        decoration: BoxDecoration(
-          color: _orangeDim,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: _orangeBorder, width: 1.2),
-        ),
-        child: Column(
-          children: [
-            Icon(icon, color: _orange, size: 30),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   // ── Submit ────────────────────────────────────────────────────────────────────
@@ -309,7 +207,6 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       return;
     }
 
-    // ── Validate reading value > previous ────────────────────────────
     final double? newValue = double.tryParse(_meterController.text.trim());
     if (newValue == null) {
       _showSnack("Angka meter tidak valid", isError: true);
@@ -325,22 +222,22 @@ class _InputReadingScreenState extends State<InputReadingScreen>
         : null;
 
     if (prevValue != null && !widget.isEdit) {
-      final double maxElec = 99999.9;
-      final double maxWater = 99999.0;
+      const double maxElec = 99999.9;
+      const double maxWater = 99999.0;
       final double maxValue = isElectricCheck ? maxElec : maxWater;
-
-      // Allow reset to zero only if previous was at max
       final bool isReset = prevValue >= maxValue && newValue == 0;
 
       if (!isReset && newValue <= prevValue) {
         _showSnack(
-          "Nilai meter harus lebih besar dari sebelumnya (${prevValue.toStringAsFixed(isElectricCheck ? 1 : 0)})"
+          "Nilai meter harus lebih besar dari sebelumnya "
+          "(${prevValue.toStringAsFixed(isElectricCheck ? 1 : 0)})"
           "${prevValue >= maxValue ? ' atau 0 jika sudah reset' : ''}",
           isError: true,
         );
         return;
       }
     }
+
     double? latitude;
     double? longitude;
     try {
@@ -357,6 +254,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
     }
 
     setState(() => _isSubmitting = true);
+
     final bool isElectric = _selectedCategory == "Electric";
     final int? readingId = widget.isEdit
         ? (isElectric
@@ -366,15 +264,14 @@ class _InputReadingScreenState extends State<InputReadingScreen>
 
     final Map<String, dynamic> payload = {
       'unit_id': _selectedUnit!.id,
-      'meter_type': _selectedCategory == "Electric"
-          ? "electricity"
-          : "water",
+      'meter_type': _selectedCategory == "Electric" ? "electricity" : "water",
       'reading_value': _meterController.text.trim(),
       'latitude': latitude,
       'longitude': longitude,
       if (_noteController.text.trim().isNotEmpty)
         'description': _noteController.text.trim(),
     };
+
     try {
       final bool success = await _apiService.submitMeterReading(
         payload,
@@ -384,8 +281,8 @@ class _InputReadingScreenState extends State<InputReadingScreen>
         isEdit: widget.isEdit,
         readingId: readingId,
       );
+
       if (mounted && success) {
-        // Refresh unit data so isElecChecked / isWaterChecked is up-to-date
         final updatedUnit = _selectedUnit!.copyWith(
           isElecChecked: _selectedCategory == "Electric"
               ? true
@@ -395,22 +292,22 @@ class _InputReadingScreenState extends State<InputReadingScreen>
               : _selectedUnit!.isWaterChecked,
         );
 
-        await Navigator.push(
+        // SuccessScreen internally calls popUntil(isFirst) to clear the stack,
+        // then fires the callback. The callbacks below run AFTER the stack is
+        // cleared, so context is always the DashboardScreen root — safe to push from.
+        Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (_) => SuccessScreen(
+            builder: (successCtx) => SuccessScreen(
               category: _selectedCategory,
               isElecChecked: updatedUnit.isElecChecked,
               isWaterChecked: updatedUnit.isWaterChecked,
-              onBack: () {
-                Navigator.pop(context); // close SuccessScreen
-                Navigator.pop(context, true); // back to DetailUnit
-              },
+              // onBack: pop to root (DashboardScreen), then switch IndexedStack
+              // to Daftar Unit tab (index 2) so user lands on DetailUnitScreen.
+              onBack: widget.onBack ?? () {},
               onInputElectric: () {
-                Navigator.pop(context); // close SuccessScreen
-                // Replace current InputReadingScreen with a fresh Electric one
-                Navigator.pushReplacement(
-                  context,
+                // Push a fresh Electric InputReadingScreen on top of Dashboard.
+                Navigator.of(successCtx).push(
                   MaterialPageRoute(
                     builder: (_) => InputReadingScreen(
                       unit: updatedUnit,
@@ -420,9 +317,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                 );
               },
               onInputWater: () {
-                Navigator.pop(context); // close SuccessScreen
-                Navigator.pushReplacement(
-                  context,
+                Navigator.of(successCtx).push(
                   MaterialPageRoute(
                     builder: (_) => InputReadingScreen(
                       unit: updatedUnit,
@@ -434,13 +329,12 @@ class _InputReadingScreenState extends State<InputReadingScreen>
             ),
           ),
         );
-
-        if (mounted) Navigator.pop(context, true);
       }
     } catch (e) {
       if (mounted)
         _showSnack(e.toString().replaceFirst("Exception: ", ""), isError: true);
     }
+
     setState(() => _isSubmitting = false);
   }
 
@@ -516,6 +410,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       extendBodyBehindAppBar: true,
       body: MainLayout(
         child: SafeArea(
+          bottom: false,
           child: FadeTransition(
             opacity: _fadeAnim,
             child: _isLoadingTenants
@@ -540,7 +435,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                           _buildProgressBar(),
                           const SizedBox(height: 28),
 
-                          // ── STEP 1: Unit + Category ──────────────────────
+                          // ── STEP 1 ───────────────────────────────────────
                           _buildSectionLabel(
                             "1",
                             "Pilih Unit",
@@ -551,7 +446,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                           const SizedBox(height: 10),
                           _buildCategoryToggle(),
 
-                          // ── STEP 2: Meter Selection (NEW) ────────────────
+                          // ── STEP 2 ───────────────────────────────────────
                           const SizedBox(height: 28),
                           _buildSectionLabel(
                             "2",
@@ -565,7 +460,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                           const SizedBox(height: 12),
                           _buildMeterDropdown(),
 
-                          // ── STEP 3: Reading value ────────────────────────
+                          // ── STEP 3 ───────────────────────────────────────
                           const SizedBox(height: 28),
                           _buildSectionLabel(
                             "3",
@@ -579,7 +474,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                           const SizedBox(height: 12),
                           _buildMeterField(isElectric),
 
-                          // ── STEP 4: Note ─────────────────────────────────
+                          // ── STEP 4 ───────────────────────────────────────
                           const SizedBox(height: 28),
                           _buildSectionLabel(
                             "4",
@@ -589,7 +484,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                           const SizedBox(height: 12),
                           _buildNoteField(),
 
-                          // ── STEP 5: Photo ─────────────────────────────────
+                          // ── STEP 5 ───────────────────────────────────────
                           const SizedBox(height: 28),
                           _buildSectionLabel(
                             "5",
@@ -603,6 +498,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                           _buildSaveButton(),
                           const SizedBox(height: 12),
                           _buildCancelButton(),
+                          const SizedBox(height: 80),
                         ],
                       ),
                     ),
@@ -757,7 +653,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
               if (opt.unit.id == val) {
                 setState(() {
                   _selectedUnit = opt.unit;
-                  _autoSelectMeter(); // reset meter when unit changes
+                  _autoSelectMeter();
                 });
                 break;
               }
@@ -803,7 +699,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       child: GestureDetector(
         onTap: () => setState(() {
           _selectedCategory = label;
-          _autoSelectMeter(); // reset meter when category changes
+          _autoSelectMeter();
         }),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
@@ -840,11 +736,10 @@ class _InputReadingScreenState extends State<InputReadingScreen>
     );
   }
 
-  // ── NEW: Meter Dropdown ───────────────────────────────────────────────────────
+  // ── Meter Dropdown ────────────────────────────────────────────────────────────
   Widget _buildMeterDropdown() {
     final meters = _availableMeters;
 
-    // No unit selected yet
     if (_selectedUnit == null) {
       return _glassCard(
         child: Row(
@@ -864,7 +759,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
       return _glassCard(
         child: Row(
           children: [
-            Icon(
+            const Icon(
               Icons.check_circle_rounded,
               color: Colors.greenAccent,
               size: 18,
@@ -880,12 +775,12 @@ class _InputReadingScreenState extends State<InputReadingScreen>
         ),
       );
     }
-    // Unit selected but no meters for this category
+
     if (meters.isEmpty) {
       return _glassCard(
         child: Row(
           children: [
-            Icon(
+            const Icon(
               Icons.warning_amber_rounded,
               color: Colors.orangeAccent,
               size: 18,
@@ -978,12 +873,10 @@ class _InputReadingScreenState extends State<InputReadingScreen>
     );
   }
 
-  /// Helper: build a readable subtitle for a meter row.
   String _meterSubtitle(Meter meter) {
     final parts = <String>[];
-    if (meter.meterType != null) {
+    if (meter.meterType != null)
       parts.add(meter.meterType == 'electricity' ? 'Listrik' : 'Air');
-    }
     if (meter.meterNumber != null) parts.add("No. ${meter.meterNumber}");
     return parts.isEmpty ? "Meteran #${meter.id}" : parts.join(' · ');
   }
@@ -1063,12 +956,12 @@ class _InputReadingScreenState extends State<InputReadingScreen>
     );
   }
 
-  // ── Photo Container ───────────────────────────────────────────────────────────
+  // ── Photo Container — CAMERA ONLY ─────────────────────────────────────────────
   Widget _buildPhotoContainer() {
     final bool hasPhoto = _photoXFile != null;
 
     return GestureDetector(
-      onTap: _showPhotoSourceSheet,
+      onTap: _openCamera, // ← always opens the camera overlay
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 300),
         width: double.infinity,
@@ -1096,9 +989,11 @@ class _InputReadingScreenState extends State<InputReadingScreen>
               ? Stack(
                   fit: StackFit.expand,
                   children: [
+                    // Preview
                     _photoBytes != null
                         ? Image.memory(_photoBytes!, fit: BoxFit.cover)
                         : Image.file(_photoFile!, fit: BoxFit.cover),
+                    // Retake overlay at bottom
                     Positioned(
                       bottom: 0,
                       left: 0,
@@ -1125,7 +1020,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                             ),
                             const SizedBox(width: 6),
                             Text(
-                              "Ganti Foto",
+                              "Ambil Ulang",
                               style: TextStyle(
                                 color: _orange,
                                 fontWeight: FontWeight.bold,
@@ -1136,6 +1031,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                         ),
                       ),
                     ),
+                    // Success badge
                     Positioned(
                       top: 10,
                       right: 10,
@@ -1154,6 +1050,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                     ),
                   ],
                 )
+              // Empty state — camera only
               : BackdropFilter(
                   filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
                   child: Container(
@@ -1180,7 +1077,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                         ),
                         const SizedBox(height: 14),
                         const Text(
-                          "Upload Foto Bukti Meter",
+                          "Ambil Foto Bukti Meter",
                           style: TextStyle(
                             fontWeight: FontWeight.bold,
                             fontSize: 15,
@@ -1189,55 +1086,46 @@ class _InputReadingScreenState extends State<InputReadingScreen>
                         ),
                         const SizedBox(height: 5),
                         const Text(
-                          "Tap untuk pilih sumber foto",
+                          "Tap untuk membuka kamera",
                           style: TextStyle(fontSize: 12, color: Colors.white38),
                         ),
                         const SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            if (!kIsWeb) ...[
-                              _miniChip(Icons.camera_alt_rounded, "Kamera"),
-                              const SizedBox(width: 8),
+                        // Camera-only chip
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _orangeDim,
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(color: _orangeBorder, width: 1),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.camera_alt_rounded,
+                                size: 13,
+                                color: _orange,
+                              ),
+                              const SizedBox(width: 5),
+                              Text(
+                                "Kamera",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: _orange,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                             ],
-                            _miniChip(Icons.photo_library_rounded, "Galeri"),
-                            if (!kIsWeb) ...[
-                              const SizedBox(width: 8),
-                              _miniChip(Icons.folder_open_rounded, "File"),
-                            ],
-                          ],
+                          ),
                         ),
                       ],
                     ),
                   ),
                 ),
         ),
-      ),
-    );
-  }
-
-  Widget _miniChip(IconData icon, String label) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: _orangeDim,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: _orangeBorder, width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 12, color: _orange),
-          const SizedBox(width: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: _orange,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1311,7 +1199,7 @@ class _InputReadingScreenState extends State<InputReadingScreen>
     );
   }
 
-  // ── Glass card helper ─────────────────────────────────────────────────────────
+  // ── Glass Card ────────────────────────────────────────────────────────────────
   Widget _glassCard({required Widget child, EdgeInsets? padding}) {
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),

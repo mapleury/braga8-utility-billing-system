@@ -115,6 +115,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
     return Scaffold(
       body: MainLayout(
         child: SafeArea(
+          bottom: false,
           child: SingleChildScrollView(
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Column(
@@ -228,7 +229,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                     ],
                   ),
 
-                const SizedBox(height: 20),
+                const SizedBox(height: 10),
 
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -256,7 +257,7 @@ class _AuditLogScreenState extends State<AuditLogScreen> {
                   ],
                 ),
 
-                const SizedBox(height: 50),
+                SizedBox(height: 100),
               ],
             ),
           ),

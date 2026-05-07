@@ -3,8 +3,8 @@ import 'package:braga8_mobile/views/widgets/app_header.dart';
 import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:flutter/material.dart';
 import 'package:braga8_mobile/ApiService.dart';
-import 'package:braga8_mobile/views/input_reading_screen.dart';
-import 'package:braga8_mobile/views/meter_reading_screen.dart';
+import 'package:braga8_mobile/views/meter_input/input_reading_screen.dart';
+import 'package:braga8_mobile/views/daftar_unit/meter_reading_screen.dart';
 import 'package:braga8_mobile/data/models/tenant_model.dart';
 import 'package:braga8_mobile/components/header_unit_detail_card_component.dart';
 import 'package:braga8_mobile/components/image_container_proof_component.dart';
@@ -235,16 +235,19 @@ class _DetailUnitScreenState extends State<DetailUnitScreen>
                             icon: Icons.add_circle_outline_rounded,
                             label: "Input Bacaan Baru",
                             onTap: () async {
-                              final result = await Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => InputReadingScreen(
-                                    unit: currentUnit,
-                                    category: selectedCategory,
-                                    isEdit: false,
-                                  ),
-                                ),
-                              );
+                              final result =
+                                  await Navigator.pushNamed(
+                                    context,
+                                    '/input-reading',
+                                    arguments: {
+                                      'unit': currentUnit,
+                                      'category': selectedCategory,
+                                      'isEdit': false,
+                                    },
+                                  ).then((result) {
+                                    if (result == true) _refreshData();
+                                  });
+
                               if (result == true) _refreshData();
                             },
                           )
@@ -278,14 +281,14 @@ class _DetailUnitScreenState extends State<DetailUnitScreen>
                         _buildSecondaryButton(
                           icon: Icons.history_rounded,
                           label: "Lihat Riwayat Bacaan",
-                          onTap: () => Navigator.push(
+                          onTap: () => Navigator.pushNamed(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => MeterHistoryScreen(
-                                unitId: currentUnit.id,
-                                unitNumber: currentUnit.unitNumber,
-                              ),
-                            ),
+                            '/meter-history',
+                            arguments: {
+                              'unitId': currentUnit.id,
+                              'unitNumber': currentUnit.unitNumber,
+                              'unit': currentUnit,
+                            },
                           ).then((_) => _refreshData()),
                         ),
 

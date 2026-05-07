@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'package:braga8_mobile/ApiService.dart';
 import 'package:braga8_mobile/data/models/tenant_model.dart';
 import 'package:braga8_mobile/views/core/app_colors.dart';
-import 'package:braga8_mobile/views/detail_unit_screen.dart';
+import 'package:braga8_mobile/views/daftar_unit/detail_unit_screen.dart';
 import 'package:braga8_mobile/views/widgets/action_button_table.dart';
 import 'package:braga8_mobile/views/widgets/app_header.dart';
 import 'package:braga8_mobile/views/widgets/custom_search_bar.dart';
@@ -402,6 +402,7 @@ class _DaftarUnitScreenState extends State<DaftarUnitScreen>
     return Scaffold(
       body: MainLayout(
         child: SafeArea(
+          bottom: false,
           child: FutureBuilder<List<Tenant>>(
             future: _tenantData,
             builder: (context, snapshot) {
@@ -550,15 +551,13 @@ class _DaftarUnitScreenState extends State<DaftarUnitScreen>
                                           0.9,
                                         ),
                                   onPressed: () {
-                                    Navigator.push(
+                                    Navigator.pushNamed(
                                       context,
-                                      MaterialPageRoute(
-                                        builder: (context) => DetailUnitScreen(
-                                          shopName: tenant.name,
-                                          unit: unit,
-                                          onBack: () => Navigator.pop(context),
-                                        ),
-                                      ),
+                                      '/detail-unit',
+                                      arguments: {
+                                        'shopName': tenant.name,
+                                        'unit': unit,
+                                      },
                                     ).then((_) => _loadData());
                                   },
                                 ),
@@ -567,7 +566,7 @@ class _DaftarUnitScreenState extends State<DaftarUnitScreen>
                           },
                         );
                       }),
-                    const SizedBox(height: 40),
+                    SizedBox(height: 80),
                   ],
                 ),
               );

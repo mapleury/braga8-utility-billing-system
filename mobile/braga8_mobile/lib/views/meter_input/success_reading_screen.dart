@@ -8,7 +8,7 @@ Map<String, bool> globalSessionTracker = {};
 
 class SuccessReadingScreen extends StatelessWidget {
   final Unit unit;
-  final String completedCategory; 
+  final String completedCategory;
   final bool isEdit;
 
   const SuccessReadingScreen({
@@ -26,10 +26,13 @@ class SuccessReadingScreen extends StatelessWidget {
     globalSessionTracker["${unit.id}_$completedCategory"] = true;
 
     // Tentukan apa kategori lawannya
-    String otherCategory = (completedCategory == 'Electric') ? 'Water' : 'Electric';
+    String otherCategory = (completedCategory == 'Electric')
+        ? 'Water'
+        : 'Electric';
 
     // Cek apakah lawan kategorinya sudah pernah diisi di sesi ini
-    bool isOtherAlreadyFilled = globalSessionTracker["${unit.id}_$otherCategory"] ?? false;
+    bool isOtherAlreadyFilled =
+        globalSessionTracker["${unit.id}_$otherCategory"] ?? false;
 
     // JANGAN munculkan prompt kalau: sedang edit, atau lawannya sudah diisi
     bool shouldShowPrompt = !isEdit && !isOtherAlreadyFilled;
@@ -47,9 +50,15 @@ class SuccessReadingScreen extends StatelessWidget {
               const SizedBox(height: 24),
               Text(
                 "Unit ${unit.unitNumber} - ${completedCategory == 'Electric' ? 'Listrik' : 'Air'}",
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              const Text("Data berhasil diverifikasi dan disimpan.", style: TextStyle(color: Colors.grey)),
+              const Text(
+                "Data berhasil diverifikasi dan disimpan.",
+                style: TextStyle(color: Colors.grey),
+              ),
               const Spacer(),
 
               if (shouldShowPrompt) ...[
@@ -68,8 +77,15 @@ class SuccessReadingScreen extends StatelessWidget {
   Widget _buildSuccessIcon() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.green.withOpacity(0.1), shape: BoxShape.circle),
-      child: const Icon(Icons.check_circle_rounded, color: Colors.green, size: 80),
+      decoration: BoxDecoration(
+        color: Colors.green.withOpacity(0.1),
+        shape: BoxShape.circle,
+      ),
+      child: const Icon(
+        Icons.check_circle_rounded,
+        color: Colors.green,
+        size: 80,
+      ),
     );
   }
 
@@ -83,7 +99,13 @@ class SuccessReadingScreen extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text("Meteran $category belum diisi!", style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+          Text(
+            "Meteran $category belum diisi!",
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              color: Colors.orange,
+            ),
+          ),
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
@@ -91,10 +113,18 @@ class SuccessReadingScreen extends StatelessWidget {
               onPressed: () {
                 Navigator.pushReplacement(
                   context,
-                  MaterialPageRoute(builder: (context) => InputReadingScreen(unit: unit, category: category)),
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        InputReadingScreen(unit: unit, category: category),
+                  ),
                 );
               },
-              style: ElevatedButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
               child: Text("INPUT $category SEKARANG"),
             ),
           ),
@@ -111,9 +141,14 @@ class SuccessReadingScreen extends StatelessWidget {
         style: OutlinedButton.styleFrom(
           padding: const EdgeInsets.symmetric(vertical: 18),
           side: BorderSide(color: color, width: 2),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
-        child: Text(isPending ? "NANTI SAJA" : "SELESAI", style: TextStyle(color: color, fontWeight: FontWeight.bold)),
+        child: Text(
+          isPending ? "NANTI SAJA" : "SELESAI",
+          style: TextStyle(color: color, fontWeight: FontWeight.bold),
+        ),
       ),
     );
   }

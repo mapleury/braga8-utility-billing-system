@@ -297,4 +297,37 @@ class ApiService {
   }
 
   Future<Object?> getBillingSummary(String token) async {}
+
+  Future<bool> clearAllNotifications(String providedToken) async {
+    try {
+      final response = await dio.delete(
+        '/notifications',
+        options: _authOptions(providedToken),
+      );
+      print('Clear All Status: ${response.statusCode}');
+      print('Clear All Response: ${response.data}');
+      return response.statusCode == 200;
+    } on DioException catch (e) {
+      print('Clear All Error Status: ${e.response?.statusCode}');
+      print('Clear All Error Body: ${e.response?.data}');
+      return false;
+    }
+  }
+
+  Future<bool> markAllAsRead(String providedToken) async {
+    try {
+      final response = await dio.patch(
+        '/notifications/read-all',
+        options: _authOptions(providedToken),
+      );
+      return response.statusCode == 200;
+    } catch (e) {
+      print('Mark All Read Error: $e');
+      return false;
+    }
+  }
+
+  void setCurrentUser(Map<String, dynamic> user) {
+    currentUser = user;
+  }
 }

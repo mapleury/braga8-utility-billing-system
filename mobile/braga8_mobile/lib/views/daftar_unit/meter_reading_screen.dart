@@ -1,6 +1,6 @@
 import 'dart:ui';
 import 'package:braga8_mobile/data/models/tenant_model.dart';
-import 'package:braga8_mobile/views/input_reading_screen.dart';
+import 'package:braga8_mobile/views/meter_input/input_reading_screen.dart';
 import 'package:braga8_mobile/views/widgets/app_header.dart';
 import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:flutter/material.dart';
@@ -103,7 +103,6 @@ class _MeterHistoryScreenState extends State<MeterHistoryScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   child: AppHeader(
-                   
                     title: "Riwayat | Unit ${widget.unitNumber}",
                     titleIcon: Icons.store_rounded,
                     onBack: widget.onBack,
@@ -470,17 +469,19 @@ class _MeterHistoryScreenState extends State<MeterHistoryScreen>
                   width: double.infinity,
                   child: ElevatedButton.icon(
                     onPressed: () async {
-                      final result = await Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) => InputReadingScreen(
-                            isEdit: true,
-                            initialValue: r.readingValue,
-                            unit: widget.unit,
-                            category: r.isElectric ? "Electric" : "Water",
-                          ),
-                        ),
-                      );
+                      final result =
+                          await Navigator.pushNamed(
+                            context,
+                            '/input-reading',
+                            arguments: {
+                              'unit': widget.unit,
+                              'category': r.isElectric ? "Electric" : "Water",
+                              'isEdit': true,
+                              'initialValue': r.readingValue,
+                            },
+                          ).then((result) {
+                            if (result == true) _refreshData();
+                          });
                       if (result == true) {
                         setState(() {
                           _futureHistory = _apiService.fetchReadingHistory(

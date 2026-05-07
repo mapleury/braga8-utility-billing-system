@@ -174,12 +174,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/meter-progress', [MeterReadingController::class, 'getMonthlyProgress']);
 
     // Communication / Tenant Portal
-    Route::prefix('notifications')->group(function () {
-        Route::get('/', [NotificationController::class, 'index']);
-        Route::patch('/{notification}/read', [NotificationController::class, 'markAsRead']);
-        Route::delete('/{notification}', [NotificationController::class, 'destroy']);
-    });
-
+ Route::prefix('notifications')->group(function () {
+    Route::get('/', [NotificationController::class, 'index']);
+    Route::patch('/{notification}/read', [NotificationController::class, 'markAsRead']);
+    Route::delete('/{notification}', [NotificationController::class, 'destroy']);
+    
+    // Tambahkan ini:
+    Route::patch('/read-all', [NotificationController::class, 'markAllAsRead']);
+    Route::delete('/', [NotificationController::class, 'destroyAll']);
+});
     // Admin Logs
     Route::get('/audit-logs', [AuditLogController::class, 'apiIndex']);
 

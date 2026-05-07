@@ -73,4 +73,20 @@ public function index()
 
         return response()->json(['message' => 'Notification deleted successfully']);
     }
+
+public function markAllAsRead()
+{
+    Notification::where('user_id', Auth::id())
+        ->whereNull('read_at')
+        ->update(['read_at' => now()]);
+
+    return response()->json(['message' => 'Semua notifikasi ditandai dibaca']);
+}
+
+public function destroyAll()
+{
+    Notification::where('user_id', Auth::id())->delete();
+
+    return response()->json(['message' => 'Semua notifikasi dihapus']);
+}
 }

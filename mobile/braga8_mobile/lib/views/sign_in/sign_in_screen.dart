@@ -1,4 +1,5 @@
 import 'package:braga8_mobile/main.dart'; // for apiService singleton
+import 'package:braga8_mobile/services/session_services.dart';
 import 'package:braga8_mobile/views/dashboard/dashboard_screen.dart'; // DashboardScreen
 import 'package:braga8_mobile/views/widgets/main_layouts.dart';
 import 'package:flutter/material.dart';
@@ -52,14 +53,20 @@ class _SignInScreenState extends State<SignInScreen> {
 
       if (response != null && response['token'] != null) {
         if (!mounted) return;
+
+        // Add this block
+        await SessionService.saveSession(
+          token: response['token'],
+          role: response['user']['role'] ?? 'petugas',
+          name: response['user']['name'] ?? '',
+        );
+
         Navigator.pushReplacementNamed(
           context,
           '/dashboard',
           arguments: {
-            'token': response['token'], // your token string from login response
-            'role':
-                response['user']['role'] ??
-                'Petugas', // your role string from login response
+            'token': response['token'],
+            'role': response['user']['role'] ?? 'Petugas',
           },
         );
       } else {
