@@ -4,6 +4,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\AuditLogController;
+use App\Http\Controllers\ComplaintController;
 use App\Http\Controllers\MeterReadingController;
 use App\Http\Controllers\TenantController;
 use App\Models\Tenant;
@@ -186,4 +187,8 @@ Route::middleware('auth:sanctum')->group(function () {
     // Admin Logs
     Route::get('/audit-logs', [AuditLogController::class, 'apiIndex']);
 
+    Route::get('/complaints', [ComplaintController::class, 'index']);
+Route::post('/complaints', [ComplaintController::class, 'store']);
+Route::put('/complaints/{id}', [ComplaintController::class, 'update']);
+Route::delete('/complaints/{id}', [ComplaintController::class, 'destroy']);
 });

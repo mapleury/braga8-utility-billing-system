@@ -1,4 +1,6 @@
 import 'package:braga8_mobile/ApiService.dart';
+import 'package:braga8_mobile/main.dart';
+import 'package:braga8_mobile/views/complaint/customer_care_screen.dart';
 import 'package:braga8_mobile/views/core/app_colors.dart';
 import 'package:braga8_mobile/views/dashboard/components/header_navbar.dart';
 import 'package:braga8_mobile/views/dashboard/components/meter_progress_card.dart';
@@ -159,6 +161,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         InputReadingScreen(onBack: () => _onItemTapped(0)),
         DaftarUnitScreen(api: widget.api, onBack: () => _onItemTapped(0)),
         AuditLogScreen(onBack: () => _onItemTapped(0)),
+        CustomerCareListScreen(onBack: () => _onItemTapped(0), api: widget.api),
         _ProfilePage(api: widget.api, role: widget.role, token: widget.token),
       ];
     }
@@ -360,7 +363,7 @@ class _DashboardBody extends StatelessWidget {
             const SizedBox(width: 16),
             Expanded(
               child: _GridItem(
-                'Complaint',
+                'Data Meter',
                 'assets/cardImage/complaint-img.png',
                 () => onNavTap(4),
               ),

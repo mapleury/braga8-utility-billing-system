@@ -1,3 +1,5 @@
+import 'package:braga8_mobile/data/models/complaint_model.dart';
+import 'package:braga8_mobile/views/complaint/input_complaint_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:braga8_mobile/ApiService.dart';
 import 'package:braga8_mobile/views/splash/splash_screen.dart';
@@ -66,6 +68,17 @@ class AppRouter {
             category: args['category'] as String?,
             isEdit: args['isEdit'] as bool? ?? false,
             initialValue: args['initialValue'] as String?,
+          ),
+        );
+
+      case '/complaint':
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
+        return MaterialPageRoute(
+          settings: settings,
+          builder: (ctx) => InputComplaintScreen(
+            complaint: args['complaint'] as Complaint?,
+            isEdit: args['isEdit'] as bool? ?? false,
+            onBack: () => Navigator.of(ctx).pop(),
           ),
         );
 

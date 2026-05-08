@@ -75,7 +75,7 @@ class HeaderNavbar extends StatelessWidget {
               ),
             ),
           ),
-          const SizedBox(width: 4),
+          const SizedBox(width: 1),
           Material(
             color: Colors.transparent,
             child: InkWell(
@@ -91,7 +91,7 @@ class HeaderNavbar extends StatelessWidget {
                   ),
                   child: CircleAvatar(
                     radius: 18,
-                    backgroundColor: Colors.grey.shade300,
+                    backgroundColor: AppColors.primaryOrange.withOpacity(0.2),
                     child: const Icon(
                       Icons.person,
                       color: Colors.white,

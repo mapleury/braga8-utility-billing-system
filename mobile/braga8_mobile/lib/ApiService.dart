@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:braga8_mobile/data/models/audit_log_model.dart';
+import 'package:braga8_mobile/data/models/complaint_model.dart';
 import 'package:braga8_mobile/data/models/meter_reading_model.dart';
 import 'package:braga8_mobile/data/models/tenant_model.dart';
 import 'package:braga8_mobile/data/models/notification_model.dart';
@@ -329,5 +330,75 @@ class ApiService {
 
   void setCurrentUser(Map<String, dynamic> user) {
     currentUser = user;
+  }
+
+  // ── Complaints ────────────────────────────────────────────────────────────────
+
+  /// GET /api/complaints
+  Future<List<Complaint>> fetchComplaints() async {
+    try {
+      final response = await dio.get('/complaints', options: _authOptions());
+      final List<dynamic> data = response.data['data'] ?? response.data;
+      return data
+          .map((e) => Complaint.fromJson(e as Map<String, dynamic>))
+          .toList();
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? "Gagal memuat daftar komplain");
+    }
+  }
+
+  /// POST /api/complaints  (create)
+  /// POST /api/complaints/{id} + _method=PUT (edit)
+  Future<bool> submitComplaint(
+    Map<String, dynamic> payload,
+    XFile? photo, {
+    bool isEdit = false,
+    int? complaintId,
+  }) async {
+    try {
+      final Map<String, dynamic> formMap = {...payload};
+
+      if (isEdit) formMap['_method'] = 'PUT';
+
+      if (photo != null) {
+        // Sama seperti submitMeterReading — pakai Base64 agar konsisten
+        final bytes = await photo.readAsBytes();
+        final ext = photo.name.split('.').last.toLowerCase();
+        final mime = (ext == 'png') ? 'image/png' : 'image/jpeg';
+        formMap['photo_base64'] = 'data:$mime;base64,${base64Encode(bytes)}';
+      }
+
+      final String path = isEdit ? '/complaints/$complaintId' : '/complaints';
+
+      final response = await dio.post(
+        path,
+        data: formMap,
+        options: _authOptions(),
+      );
+
+      return response.statusCode == 200 || response.statusCode == 201;
+    } on DioException catch (e) {
+      debugPrint('Submit Complaint Error: ${jsonEncode(e.response?.data)}');
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? "Gagal menyimpan komplain");
+    }
+  }
+
+  /// DELETE /api/complaints/{id}
+  Future<void> deleteComplaint(int id) async {
+    try {
+      final response = await dio.delete(
+        '/complaints/$id',
+        options: _authOptions(),
+      );
+      if (response.statusCode != 200 && response.statusCode != 204) {
+        final msg = response.data?['message'] as String?;
+        throw Exception(msg ?? "Gagal menghapus komplain");
+      }
+    } on DioException catch (e) {
+      final msg = e.response?.data?['message'] as String?;
+      throw Exception(msg ?? "Gagal menghapus komplain");
+    }
   }
 }
